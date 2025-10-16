@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novan - Gestão de Cobranças</title>
+    <!-- Carrega Tailwind CSS e Chart.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Define a fonte Inter e o esquema de cores da Novan -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'novan-purple': '#7A52F7', // Roxo suave da Novan
+                        'novan-light': '#F3F4F6',  // Cinza claro para fundo (Não usado no body, mas mantido)
+                        'novan-green': '#10B981',  // Verde para Pago / Ativo
+                        'novan-yellow': '#F59E0B', // Amarelo para A Receber
+                        'novan-red': '#EF4444',    // Vermelho para Atrasado
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 min-h-screen"> <!-- MUDANÇA: Fundo em tom escuro -->
+
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, serverTimestamp, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase and App Variables
+        let db;
+        let auth;
+        let userId = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // INCLUÍDO: Configuração do Firebase fornecida pelo usuário
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4Q0fUJGNLz6pm8GYbtyrnLLN5dh1jNeA",
+            authDomain: "financeiro-novan.firebaseapp.com",
+            projectId: "financeiro-novan",
+            storageBucket: "financeiro-novan.firebasestorage.app",
+            messagingSenderId: "124879794673",
+            appId: "1:124879794673:web:0fa7769ca61c6582cd9450"
+        };
+        // FIM: Configuração do Firebase
+        
+        // Set log level for debugging
+        setLogLevel('Debug');
+
+        // Initializing Firebase
+        function setupFirebase() {
+            try {
+                // MUDANÇA: Usando a configuração hardcoded acima
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Atribuindo a variáveis globais para acesso de outras funções
+                window.db = db;
+                window.auth = auth;
+                window.appId = appId;
+                
+                // Authentication Logic
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // User is signed in.
+                        userId = user.uid;
+                        console.log("Usuário autenticado:", userId);
+                        document.getElementById('auth-screen').classList.add('hidden');
+                        document.getElementById('app-container').classList.remove('hidden');
+                        
+                        // Start listeners and navigation
+                        initApp(userId);
+                        navigateTo('dashboard');
+                    } else {
+                        // User is signed out.
+                        userId = null;
+                        console.log("Usuário deslogado. Exibindo tela de login.");
+                        document.getElementById('auth-screen').classList.remove('hidden');
+                        document.getElementById('app-container').classList.add('hidden');
+                    }
+                });
+
+                // CORREÇÃO: Removendo o bloco de sign-in automático (CustomToken e Anônimo)
+                // para resolver o erro 'auth/configuration-not-found', pois o login
+                // será feito via formulário de E-mail/Senha.
+
+            } catch (error) {
+                console.error("Erro ao configurar Firebase:", error);
+                document.getElementById('auth-message').textContent = 'Erro ao carregar o Firebase. Verifique a configuração.';
+                document.getElementById('auth-message').classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', setupFirebase);
+        
+        // --- Core Application Logic (Must be defined globally or within a self-executing function) ---
+
+        // As variáveis globais (window.db, window.auth, window.appId) são definidas dentro de setupFirebase()
+        // para garantir que a inicialização ocorra uma única vez.
+        
+        let totalRecebido = 0;
+        let totalAReceber = 0;
+        let totalAtrasado = 0;
+        let allFaturas = [];
+        let allClientes = {}; // Map of client ID to client name/phone for quick lookup
+        let allClientesArray = []; // Array to hold all client objects for client list/filtering
+        let currentFaturaFilter = 'all'; // Variável de estado para o filtro de faturas
+        let currentClientFilter = 'all'; // NOVO: Variável de estado para o filtro de clientes
+
+        // Utility: Formatar moeda
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
+
+        // Utility: Formatar data
+        const formatDate = (timestamp) => {
+            if (!timestamp) return 'N/A';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('pt-BR');
+        };
+
+        // Utility: Exibir mensagem de ação (sucesso/erro)
+        const showActionMessage = (message, isSuccess = true) => {
+            // Priority to Faturas message element, fallback to Client message element
+            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message');
+            
+            messageEl.textContent = message;
+            messageEl.classList.remove('hidden', 'bg-green-100', 'text-novan-green', 'bg-red-100', 'text-novan-red');
+            if (isSuccess) {
+                messageEl.classList.add('bg-green-100', 'text-novan-green');
+                messageEl.classList.remove('bg-red-100', 'text-novan-red');
+            } else {
+                messageEl.classList.add('bg-red-100', 'text-novan-red');
+                messageEl.classList.remove('bg-green-100', 'text-novan-green');
+            }
+            setTimeout(() => messageEl.classList.add('hidden'), 5000);
+        };
+
+        // Utility: Definir status e cor
+        const getStatusDetails = (status, vencimentoTimestamp) => {
+            const now = new Date();
+            let vencimento = vencimentoTimestamp.toDate ? vencimentoTimestamp.toDate() : new Date(vencimentoTimestamp);
+            
+            let statusText = status;
+            let statusColor = '';
+
+            if (status === 'Pago') {
+                statusColor = 'bg-novan-green';
+                statusText = '✅ Pago';
+            } else if (status === 'A receber' && vencimento < now) {
+                statusColor = 'bg-novan-red';
+                statusText = '⚠️ Atrasado';
+                // Override status variable for dashboard calculation and filtering
+                status = 'Atrasado'; 
+            } else if (status === 'A receber') {
+                statusColor = 'bg-novan-yellow';
+                statusText = '⏳ A receber';
+                // Override status variable for dashboard calculation and filtering
+                status = 'A receber';
+            } else {
+                // If status is 'Atrasado' but hasn't been Pago, treat as Atrasado (e.g., if manually set)
+                 statusColor = 'bg-novan-red';
+                 statusText = '⚠️ Atrasado';
+                 status = 'Atrasado';
+            }
+
+            return { status, statusText, statusColor };
+        };
+
+        // --- AUTH FUNCTIONS ---
+        window.handleAuth = async (type) => {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const messageEl = document.getElementById('auth-message');
+
+            if (!email || !password) {
+                messageEl.textContent = 'Preencha todos os campos.';
+                messageEl.classList.remove('hidden', 'text-novan-green');
+                messageEl.classList.add('text-novan-red');
+                return;
+            }
+
+            messageEl.classList.add('hidden');
+
+            try {
+                if (type === 'register') {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    messageEl.textContent = 'Registro realizado com sucesso! Você será redirecionado.';
+                    messageEl.classList.remove('hidden', 'text-novan-red');
+                    messageEl.classList.add('text-novan-green');
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    messageEl.textContent = 'Login bem-sucedido! Você será redirecionado.';
+                    messageEl.classList.remove('hidden', 'text-novan-red');
+                    messageEl.classList.add('text-novan-green');
+                }
+            } catch (error) {
+                console.error("Erro de autenticação:", error);
+                messageEl.textContent = `Erro: ${error.message}`;
+                messageEl.classList.remove('hidden', 'text-novan-green');
+                messageEl.classList.add('text-novan-red');
+            }
+        };
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                // The onAuthStateChanged listener handles the UI change
+            } catch (error) {
+                console.error("Erro ao fazer logout:", error);
+            }
+        };
+
+        // --- NAVIGATION ---
+        window.navigateTo = (view) => {
+            // Hide all views
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
+            
+            // Show requested view
+            const targetView = document.getElementById(`view-${view}`);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+            }
+
+            // Update active menu item
+            document.querySelectorAll('.menu-item').forEach(el => {
+                // REMOVE active and old inactive classes
+                el.classList.remove('bg-novan-purple', 'text-white', 'text-gray-700', 'hover:bg-novan-light');
+                // ADD new inactive classes (for dark sidebar)
+                el.classList.add('text-gray-300', 'hover:bg-gray-700'); 
+            });
+            // Set the active button
+            const activeMenuItem = document.getElementById(`menu-${view}`);
+            activeMenuItem.classList.add('bg-novan-purple', 'text-white');
+            activeMenuItem.classList.remove('text-gray-300', 'hover:bg-gray-700'); // Remove inactive classes from active item
+
+
+            // Hide mobile menu after click
+            document.getElementById('mobile-menu').classList.add('hidden');
+            
+            // NOVO: Se for para Faturas ou Clientes, garantir que o filtro inicial seja 'all' e a aba correta esteja ativa.
+            if (view === 'faturas') {
+                setFaturaFilter('all');
+            } else if (view === 'clientes') {
+                setClientFilter('all');
+            }
+        };
+
+        window.toggleMobileMenu = () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        };
+
+
+        // --- FIREBASE LISTENERS & DASHBOARD UPDATE ---
+        let faturasListener = null;
+        let clientesListener = null;
+        let myChart = null;
+
+        const initApp = (currentUserId) => {
+            window.userId = currentUserId; // Set global userId
+            const clientesPath = `artifacts/${appId}/users/${window.userId}/clientes`;
+            const faturasPath = `artifacts/${appId}/users/${window.userId}/faturas`;
+
+            if (faturasListener) faturasListener(); // Unsubscribe previous listener
+            if (clientesListener) clientesListener(); // Unsubscribe previous listener
+
+            // 1. Clientes Listener (Populate lookup map AND list array)
+            const qClientes = query(collection(db, clientesPath));
+            clientesListener = onSnapshot(qClientes, (snapshot) => {
+                allClientes = {};
+                allClientesArray = []; // Reset array
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    allClientes[doc.id] = { nome: data.nome, telefone: data.telefone };
+                    allClientesArray.push({ id: doc.id, ...data });
+                });
+                console.log("Clientes atualizados:", allClientesArray.length);
+                
+                // Render client list view
+                renderClientesTable(allClientesArray);
+
+                // If faturas have already loaded, update the faturas table
+                if (allFaturas.length > 0) {
+                     renderFaturasTable(allFaturas);
+                }
+            }, (error) => {
+                console.error("Erro ao ouvir clientes:", error);
+            });
+
+            // 2. Faturas Listener (Main data source)
+            const qFaturas = query(collection(db, faturasPath));
+            faturasListener = onSnapshot(qFaturas, (snapshot) => {
+                totalRecebido = 0;
+                totalAReceber = 0;
+                totalAtrasado = 0;
+                allFaturas = [];
+
+                snapshot.forEach(doc => {
+                    const fatura = { id: doc.id, ...doc.data() };
+                    const valor = parseFloat(fatura.valor);
+                    
+                    const { status } = getStatusDetails(fatura.status, fatura.vencimento);
+
+                    if (status === 'Pago') {
+                        totalRecebido += valor;
+                    } else if (status === 'A receber') {
+                        totalAReceber += valor;
+                    } else if (status === 'Atrasado') {
+                        totalAtrasado += valor;
+                    }
+                    allFaturas.push(fatura);
+                });
+
+                // Sort by due date (vencimento)
+                allFaturas.sort((a, b) => (a.vencimento.toMillis() - b.vencimento.toMillis()));
+
+                updateDashboard();
+                renderFaturasTable(allFaturas);
+            }, (error) => {
+                console.error("Erro ao ouvir faturas:", error);
+            });
+        };
+
+        const updateDashboard = () => {
+            // Update summary cards
+            document.getElementById('total-recebido').textContent = formatCurrency(totalRecebido);
+            document.getElementById('total-a-receber').textContent = formatCurrency(totalAReceber);
+            document.getElementById('total-atrasado').textContent = formatCurrency(totalAtrasado);
+            
+            // Check for overdue alert
+            const overdueAlert = document.getElementById('overdue-alert');
+            if (totalAtrasado > 0) {
+                overdueAlert.classList.remove('hidden');
+                document.getElementById('overdue-count').textContent = formatCurrency(totalAtrasado);
+            } else {
+                overdueAlert.classList.add('hidden');
+            }
+
+            // Update Chart.js
+            const ctx = document.getElementById('financeChart').getContext('2d');
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Recebido', 'A Receber', 'Atrasado'],
+                    datasets: [{
+                        data: [totalRecebido, totalAReceber, totalAtrasado],
+                        backgroundColor: [
+                            '#10B981', // novan-green
+                            '#F59E0B', // novan-yellow
+                            '#EF4444'  // novan-red
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'white' // Cor da legenda para o fundo escuro
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += formatCurrency(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // --- CLIENTE MANAGEMENT ---
+        window.onload = function() {
+            document.getElementById('client-form').addEventListener('submit', handleNewClient);
+        };
+
+        async function handleNewClient(event) {
+            event.preventDefault();
+            const form = event.target;
+            const nome = form.nome.value;
+            const telefone = form.telefone.value;
+            const valorContrato = parseFloat(form.valorContrato.value);
+            // CORREÇÃO DE DATA:
+            const dateValue = form.dataEntrada.value;
+            const [year, month, day] = dateValue.split('-').map(Number);
+            // Cria a data no horário de 12:00 do dia local para evitar problemas de fuso horário UTC (que causavam o erro de 1 dia)
+            const dataEntrada = new Date(year, month - 1, day, 12, 0, 0); 
+            // FIM CORREÇÃO DE DATA
+            
+            const clientsCollection = collection(db, `artifacts/${appId}/users/${window.userId}/clientes`);
+            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
+            const messageEl = document.getElementById('client-message');
+
+            if (!nome || !telefone || isNaN(valorContrato) || valorContrato <= 0 || !dataEntrada) {
+                messageEl.textContent = 'Preencha todos os campos corretamente.';
+                messageEl.classList.remove('hidden', 'text-novan-green');
+                messageEl.classList.add('text-novan-red');
+                return;
+            }
+
+            messageEl.classList.add('hidden');
+
+            try {
+                // 1. Add Client
+                const newClientRef = await addDoc(clientsCollection, {
+                    nome,
+                    telefone,
+                    valorContrato,
+                    dataEntrada: serverTimestamp(),
+                    status: 'Ativo', // NOVO: Status padrão
+                    createdAt: serverTimestamp()
+                });
+                const clientId = newClientRef.id;
+
+                // 2. Generate Initial Fatura (PAID)
+                await addDoc(invoicesCollection, {
+                    clienteId: clientId,
+                    valor: valorContrato,
+                    vencimento: dataEntrada, // Initial invoice is the date of entry
+                    status: 'Pago',
+                    criadoEm: serverTimestamp()
+                });
+
+                // 3. Generate Next Fatura (A RECEBER - Same day next month)
+                const nextVencimento = new Date(dataEntrada);
+                nextVencimento.setMonth(nextVencimento.getMonth() + 1); // Adiciona 1 mês, mantendo o dia
+                
+                await addDoc(invoicesCollection, {
+                    clienteId: clientId,
+                    valor: valorContrato,
+                    vencimento: nextVencimento,
+                    status: 'A receber',
+                    criadoEm: serverTimestamp()
+                });
+
+                form.reset();
+                showActionMessage(`Cliente ${nome} e suas duas primeiras faturas criadas com sucesso!`, true);
+
+            } catch (e) {
+                console.error("Erro ao adicionar cliente/fatura:", e);
+                showActionMessage(`Erro ao salvar dados: ${e.message}`, false);
+            }
+        }
+
+        // --- CLIENTE LISTING & FILTERING ---
+        
+        // Função para filtrar e renderizar a lista de clientes
+        const renderClientesTable = (clientes) => {
+            const tableBody = document.getElementById('clientes-table-body');
+            tableBody.innerHTML = ''; // Limpa dados anteriores
+            
+            let filteredClientes = clientes;
+            if (currentClientFilter !== 'all') {
+                filteredClientes = clientes.filter(client => client.status === currentClientFilter);
+            }
+
+            if (filteredClientes.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum cliente encontrado com o filtro atual.</td></tr>`;
+                return;
+            }
+
+            filteredClientes.forEach(client => {
+                const row = tableBody.insertRow();
+                row.className = 'bg-white border-b hover:bg-novan-light';
+                
+                // Nome
+                row.insertCell().textContent = client.nome;
+                
+                // Telefone
+                row.insertCell().textContent = client.telefone;
+                
+                // Valor
+                row.insertCell().textContent = formatCurrency(client.valorContrato);
+                
+                // Status
+                const statusCell = row.insertCell();
+                const statusColor = client.status === 'Ativo' ? 'bg-novan-green' : 'bg-gray-500';
+                const statusText = client.status === 'Ativo' ? '✅ Ativo' : '❌ Inativo';
+                statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
+
+                // Ações (Update Status)
+                const actionCell = row.insertCell();
+                const toggleBtn = document.createElement('button');
+                const newStatus = client.status === 'Ativo' ? 'Inativo' : 'Ativo';
+                toggleBtn.textContent = newStatus === 'Ativo' ? 'Ativar' : 'Inativar';
+                toggleBtn.title = `Mudar status para ${newStatus}`;
+                toggleBtn.className = 'p-2 text-sm text-white rounded-lg transition duration-150 font-semibold ' + (client.status === 'Ativo' ? 'bg-gray-500 hover:bg-gray-600' : 'bg-novan-green hover:bg-novan-purple');
+                toggleBtn.onclick = () => updateClientStatus(client.id, newStatus);
+                actionCell.appendChild(toggleBtn);
+            });
+        };
+
+        // Função para definir o filtro de clientes
+        window.setClientFilter = (filter) => {
+            currentClientFilter = filter;
+            // Atualiza botões
+            document.querySelectorAll('.client-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-novan-purple', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+            });
+            
+            const activeBtn = document.getElementById(`client-tab-${filter.toLowerCase().replace(' ', '-')}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                activeBtn.classList.add('bg-novan-purple', 'text-white');
+            }
+
+            // Renderiza a tabela novamente com o novo filtro
+            renderClientesTable(allClientesArray);
+        };
+        
+        // Função para alterar o status do cliente no Firestore
+        window.updateClientStatus = async (clientId, newStatus) => {
+            const clientsCollection = collection(db, `artifacts/${appId}/users/${window.userId}/clientes`);
+            const docRef = doc(clientsCollection, clientId);
+            
+            try {
+                await setDoc(docRef, { status: newStatus }, { merge: true });
+                console.log(`Cliente ${clientId} atualizado para ${newStatus}`);
+                showActionMessage(`Status do cliente atualizado para ${newStatus}!`, true);
+            } catch (e) {
+                console.error("Erro ao atualizar status do cliente:", e);
+                showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
+            }
+        };
+        
+        // --- FATURA MANAGEMENT ---
+        
+        // NOVO: Função para excluir fatura
+        window.deleteFatura = async (faturaId) => {
+            if (!window.userId) {
+                console.error("Usuário não autenticado.");
+                showActionMessage('Erro: Usuário não autenticado.', false);
+                return;
+            }
+            
+            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
+            const docRef = doc(invoicesCollection, faturaId);
+
+            try {
+                // Using Firestore deleteDoc
+                await deleteDoc(docRef);
+                console.log(`Fatura ${faturaId} excluída com sucesso.`);
+                showActionMessage('Fatura excluída com sucesso!');
+                // onSnapshot handles UI refresh automatically
+            } catch (e) {
+                console.error("Erro ao excluir fatura:", e);
+                showActionMessage(`Erro ao excluir fatura: ${e.message}`, false);
+            }
+        }
+        
+        // Função para definir o filtro de faturas
+        window.setFaturaFilter = (filter) => {
+            currentFaturaFilter = filter;
+            // Atualiza botões
+            document.querySelectorAll('.fatura-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-novan-purple', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+            });
+            
+            const activeBtn = document.getElementById(`tab-${filter.toLowerCase().replace(' ', '-')}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                activeBtn.classList.add('bg-novan-purple', 'text-white');
+            }
+
+            // Renderiza a tabela novamente com o novo filtro
+            renderFaturasTable(allFaturas);
+        };
+
+
+        const renderFaturasTable = (faturas) => {
+            const tableBody = document.getElementById('faturas-table-body');
+            tableBody.innerHTML = ''; // Clear previous data
+
+            // Lógica de Filtragem
+            let filteredFaturas = faturas;
+            if (currentFaturaFilter !== 'all') {
+                filteredFaturas = faturas.filter(fatura => {
+                    // Usa o status calculado para filtrar (necessário para 'Atrasado')
+                    const { status } = getStatusDetails(fatura.status, fatura.vencimento);
+                    return status === currentFaturaFilter;
+                });
+            }
+
+            if (filteredFaturas.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhuma fatura encontrada com o filtro atual.</td></tr>`;
+                return;
+            }
+
+            filteredFaturas.forEach(fatura => {
+                const client = allClientes[fatura.clienteId] || { nome: 'Cliente Desconhecido', telefone: 'N/A' };
+                // Usa o status real (calculado) para a cor e texto da célula
+                const { statusText, statusColor } = getStatusDetails(fatura.status, fatura.vencimento); 
+
+                const row = tableBody.insertRow();
+                row.className = 'bg-white border-b hover:bg-novan-light';
+                
+                // Cliente
+                row.insertCell().textContent = client.nome;
+                
+                // Telefone
+                row.insertCell().textContent = client.telefone;
+                
+                // Valor
+                row.insertCell().textContent = formatCurrency(fatura.valor);
+                
+                // Vencimento
+                row.insertCell().textContent = formatDate(fatura.vencimento);
+                
+                // Status
+                const statusCell = row.insertCell();
+                statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
+
+                // Ações
+                const actionCell = row.insertCell();
+                actionCell.classList.add('flex', 'items-center', 'space-x-2');
+
+                // Update Status
+                const select = document.createElement('select');
+                select.className = 'p-2 border rounded-md text-sm cursor-pointer';
+                select.title = 'Mudar Status';
+                
+                // Options
+                const options = ['A receber', 'Pago']; // Atrasado é calculado automaticamente
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    // Se o status da fatura for Pago, selecionar Pago. Senão, assumir A receber (que será corrigido para Atrasado se vencido)
+                    if (fatura.status === opt) {
+                        option.selected = true;
+                    }
+                });
+                
+                // Disable update if already Paid
+                if (fatura.status === 'Pago') {
+                    select.disabled = true;
+                } else {
+                    // Event Listener for update
+                    select.addEventListener('change', (e) => updateFaturaStatus(fatura.id, e.target.value));
+                }
+
+                actionCell.appendChild(select);
+
+                // Ações (Gerar Nova Fatura)
+                const generateBtn = document.createElement('button');
+                generateBtn.textContent = '➕';
+                generateBtn.title = 'Gerar Próxima Fatura';
+                generateBtn.className = 'p-2 text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150';
+                generateBtn.onclick = () => generateNextFatura(fatura.clienteId, fatura.valor, fatura.vencimento.toDate());
+                actionCell.appendChild(generateBtn);
+                
+                // NOVO: Ações (Excluir Fatura)
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = `Excluir Fatura`;
+                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.onclick = () => deleteFatura(fatura.id);
+                actionCell.appendChild(deleteBtn);
+            });
+        };
+
+        async function updateFaturaStatus(faturaId, newStatus) {
+            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
+            const docRef = doc(invoicesCollection, faturaId);
+            
+            try {
+                // Update only the status field
+                await setDoc(docRef, { status: newStatus }, { merge: true });
+                console.log(`Fatura ${faturaId} atualizada para ${newStatus}`);
+                showActionMessage('Status da fatura atualizado com sucesso!');
+                // The onSnapshot listener handles UI refresh
+            } catch (e) {
+                console.error("Erro ao atualizar status da fatura:", e);
+                showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
+            }
+        }
+        
+        async function generateNextFatura(clienteId, valorContrato, lastDueDate) {
+            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
+            
+            // Calculate next month, same day
+            const nextVencimento = new Date(lastDueDate);
+            nextVencimento.setMonth(nextVencimento.getMonth() + 1); // Adiciona 1 mês, mantendo o dia
+            
+            try {
+                await addDoc(invoicesCollection, {
+                    clienteId: clienteId,
+                    valor: valorContrato,
+                    vencimento: nextVencimento,
+                    status: 'A receber',
+                    criadoEm: serverTimestamp()
+                });
+
+                showActionMessage(`Próxima fatura (${formatCurrency(valorContrato)}) gerada para ${formatDate(nextVencimento)}.`);
+
+            } catch (e) {
+                console.error("Erro ao gerar nova fatura:", e);
+                showActionMessage(`Erro ao gerar nova fatura: ${e.message}`, false);
+            }
+        }
+
+
+    </script>
+    </script>
+
+    <!-- ---------------------- TELA DE LOGIN ---------------------- -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl">
+            <div class="flex flex-col items-center mb-8">
+                <!-- Logo da Novan - Espaço reservado -->
+                <div class="h-12 w-12 bg-novan-purple rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4">N</div>
+                <h1 class="text-3xl font-bold text-gray-800">Login Novan Billing</h1>
+                <p class="text-gray-500">Acesso exclusivo para administradores.</p>
+            </div>
+            
+            <div id="auth-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-red-100 text-novan-red"></div>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="auth-email" class="block text-sm font-medium text-gray-700">E-mail</label>
+                    <input type="email" id="auth-email" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple" required>
+                </div>
+                <div>
+                    <label for="auth-password" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="auth-password" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple" required>
+                </div>
+                
+                <button onclick="handleAuth('login')" class="w-full py-3 px-4 bg-novan-purple text-white font-semibold rounded-lg shadow-lg hover:bg-opacity-90 transition duration-200">
+                    Entrar
+                </button>
+                <button onclick="handleAuth('register')" class="w-full py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-200">
+                    Registrar (Primeiro Acesso)
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ---------------------- TELA PRINCIPAL (APLICAÇÃO) ---------------------- -->
+    <div id="app-container" class="hidden flex min-h-screen">
+        
+        <!-- Sidebar/Menu Lateral -->
+        <aside class="fixed inset-y-0 left-0 w-64 bg-gray-800 shadow-xl transition-transform duration-300 transform -translate-x-full md:translate-x-0 z-40" id="sidebar"> <!-- ALTERADO: bg-white para bg-gray-800 -->
+            <div class="p-6">
+                <!-- Logo da Novan -->
+                <div class="flex items-center space-x-2 mb-8">
+                    <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
+                    <span class="text-xl font-extrabold text-white">Novan Agency</span> <!-- ALTERADO: text-gray-800 para text-white -->
+                </div>
+                
+                <!-- ID do Usuário (Para fins de debug e identificação) -->
+                <div class="text-xs text-gray-400 mb-6 border-b border-gray-700 pb-4"> <!-- ALTERADO: border-b padrão para border-gray-700 -->
+                    ID Usuário: <span id="display-user-id" class="break-all font-mono text-gray-400" title="Seu ID único no Firestore."></span> <!-- ALTERADO: text-gray-600 para text-gray-400 -->
+                    <script>
+                        // Updates the user ID display after successful authentication
+                        if(typeof onAuthStateChanged !== 'undefined' && typeof auth !== 'undefined') {
+                            onAuthStateChanged(auth, (user) => {
+                                if(user) {
+                                    document.getElementById('display-user-id').textContent = user.uid;
+                                }
+                            });
+                        }
+                    </script>
+                </div>
+
+                <!-- Menu de Navegação -->
+                <nav class="space-y-2">
+                    <button id="menu-dashboard" onclick="navigateTo('dashboard')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-white bg-novan-purple">
+                        <span class="mr-3">📊</span> Dashboard
+                    </button>
+                    <!-- ALTERADO: text-gray-700 hover:bg-novan-light para text-gray-300 hover:bg-gray-700 -->
+                    <button id="menu-clientes" onclick="navigateTo('clientes')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
+                        <span class="mr-3">👤</span> Clientes
+                    </button>
+                    <!-- ALTERADO: text-gray-700 hover:bg-novan-light para text-gray-300 hover:bg-gray-700 -->
+                    <button id="menu-faturas" onclick="navigateTo('faturas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
+                        <span class="mr-3">🧾</span> Faturas
+                    </button>
+                </nav>
+            </div>
+            
+            <!-- Botão Sair -->
+            <div class="absolute bottom-0 w-full p-6 border-t border-gray-700"> <!-- ALTERADO: border-t padrão para border-t-gray-700 -->
+                <!-- ALTERADO: text-novan-red bg-red-50 hover:bg-red-100 para text-red-300 bg-red-900 hover:bg-red-700 -->
+                <button onclick="logout()" class="flex items-center w-full p-3 rounded-xl text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">
+                    <span class="mr-3">🚪</span> Sair
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content (inclui o header) -->
+        <main class="flex-1 md:ml-64 p-4 lg:p-8 transition-all duration-300">
+            
+            <!-- Header Fixo (para mobile) e Toggle -->
+            <header class="md:hidden sticky top-0 bg-white shadow-md p-4 flex justify-between items-center z-30 mb-4 rounded-xl">
+                 <div class="flex items-center space-x-2">
+                    <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
+                    <span class="text-xl font-extrabold text-gray-800">Novan Agency</span> <!-- MUDANÇA: Nome para Novan Agency -->
+                </div>
+                <button onclick="toggleMobileMenu()" class="text-gray-700 p-2 rounded-lg hover:bg-novan-light">
+                    <!-- Icone de Menu -->
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+                <!-- Menu Mobile Dropdown -->
+                <nav id="mobile-menu" class="absolute top-full left-0 w-full bg-white shadow-lg p-4 hidden border-t rounded-b-xl z-50">
+                    <button onclick="navigateTo('dashboard')" class="menu-item block w-full text-left p-3 rounded-lg bg-novan-purple text-white mb-2">📊 Dashboard</button>
+                    <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-700 hover:bg-novan-light mb-2">👤 Clientes</button>
+                    <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-700 hover:bg-novan-light mb-2">🧾 Faturas</button>
+                    <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-novan-red bg-red-50 hover:bg-red-100">🚪 Sair</button>
+                </nav>
+            </header>
+
+            <!-- Alerta de Faturas Vencidas -->
+            <div id="overdue-alert" class="hidden p-4 mb-6 text-sm text-white bg-novan-red rounded-xl shadow-lg" role="alert">
+                <span class="font-bold">⚠️ Atenção!</span> Você possui <span id="overdue-count" class="font-extrabold"></span> em faturas ATRASADAS.
+            </div>
+
+            <!-- ---------------------- VIEW: DASHBOARD ---------------------- -->
+            <div id="view-dashboard" class="app-view space-y-8">
+                <h2 class="text-3xl font-bold text-gray-100">Dashboard Financeiro</h2> <!-- MUDANÇA: Cor do texto para contraste -->
+
+                <!-- Cartões de Resumo Financeiro -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Total Recebido -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 hover:shadow-xl">
+                        <p class="text-sm font-medium text-gray-500">Total Recebido (💰)</p>
+                        <p id="total-recebido" class="text-3xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
+                    </div>
+                    <!-- Total a Receber -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300 hover:shadow-xl">
+                        <p class="text-sm font-medium text-gray-500">Total a Receber (📅)</p>
+                        <p id="total-a-receber" class="text-3xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
+                    </div>
+                    <!-- Total em Atraso -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 hover:shadow-xl">
+                        <p class="text-sm font-medium text-gray-500">Total em Atraso (⚠️)</p>
+                        <p id="total-atrasado" class="text-3xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
+                    </div>
+                </div>
+
+                <!-- Gráfico Chart.js -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Resumo de Status Financeiro</h3>
+                    <div class="h-80 w-full">
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ---------------------- VIEW: CLIENTES ---------------------- -->
+            <div id="view-clientes" class="app-view hidden space-y-8">
+                <h2 class="text-3xl font-bold text-gray-100">Cadastro e Gestão de Clientes</h2> <!-- MUDANÇA: Título expandido -->
+                
+                <div id="client-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Novo Cadastro</h3>
+                    <form id="client-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Nome Completo -->
+                            <div>
+                                <label for="nome" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                                <input type="text" id="nome" name="nome" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-novan-purple focus:border-novan-purple" required>
+                            </div>
+                            <!-- Telefone (WhatsApp) -->
+                            <div>
+                                <label for="telefone" class="block text-sm font-medium text-gray-700">Telefone (WhatsApp)</label>
+                                <input type="tel" id="telefone" name="telefone" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-novan-purple focus:border-novan-purple" required>
+                            </div>
+                            <!-- Valor do Contrato (R$) -->
+                            <div>
+                                <label for="valorContrato" class="block text-sm font-medium text-gray-700">Valor do Contrato (R$)</label>
+                                <input type="number" step="0.01" id="valorContrato" name="valorContrato" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-novan-purple focus:border-novan-purple" required>
+                            </div>
+                            <!-- Data da Entrada -->
+                            <div>
+                                <label for="dataEntrada" class="block text-sm font-medium text-gray-700">Data da Entrada</label>
+                                <input type="date" id="dataEntrada" name="dataEntrada" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-novan-purple focus:border-novan-purple" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 px-4 bg-novan-purple text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 transition duration-200">
+                            Cadastrar Cliente e Gerar Faturas Iniciais
+                        </button>
+                    </form>
+                </div>
+
+                <!-- NOVO: Seção de Listagem e Filtro -->
+                <h2 class="text-2xl font-bold text-gray-100 pt-4">Clientes Cadastrados</h2>
+                
+                <!-- Tab Navigation para Filtragem de Clientes -->
+                <div class="flex flex-wrap gap-3">
+                    <button id="client-tab-all" onclick="setClientFilter('all')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-novan-purple text-white">Todos</button>
+                    <button id="client-tab-ativo" onclick="setClientFilter('Ativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-200 text-gray-800 hover:bg-gray-300">✅ Ativos</button>
+                    <button id="client-tab-inativo" onclick="setClientFilter('Inativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-200 text-gray-800 hover:bg-gray-300">❌ Inativos</button>
+                </div>
+
+                <!-- Tabela de Clientes -->
+                <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-novan-light">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Contrato</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Clientes serão injetados aqui pelo JS -->
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ---------------------- VIEW: FATURAS ---------------------- -->
+            <div id="view-faturas" class="app-view hidden space-y-8">
+                <h2 class="text-3xl font-bold text-gray-100">Controle de Faturas</h2> <!-- MUDANÇA: Cor do texto para contraste -->
+                
+                <!-- NOVO: Tab Navigation para Filtragem -->
+                <div class="flex flex-wrap gap-3">
+                    <button id="tab-all" onclick="setFaturaFilter('all')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-novan-purple text-white">Todas</button>
+                    <button id="tab-pago" onclick="setFaturaFilter('Pago')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-200 text-gray-800 hover:bg-gray-300">✅ Pago</button>
+                    <button id="tab-a-receber" onclick="setFaturaFilter('A receber')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-200 text-gray-800 hover:bg-gray-300">⏳ A Receber</button>
+                    <button id="tab-atrasado" onclick="setFaturaFilter('Atrasado')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-200 text-gray-800 hover:bg-gray-300">⚠️ Vencidas</button>
+                </div>
+                
+                <div id="faturas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
+
+                <!-- Tabela de Faturas -->
+                <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-novan-light">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faturas-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Faturas serão injetadas aqui pelo JS -->
+                            <tr><td colspan="6" class="p-4 text-center text-gray-500">Carregando faturas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+</body>
+</html>
