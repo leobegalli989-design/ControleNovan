@@ -11,6 +11,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        /* CSS para animação de transição de tela */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
     <script>
         tailwind.config = {
@@ -225,12 +233,13 @@
         // --- NAVIGATION ---
         window.navigateTo = (view) => {
             // Hide all views
-            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden', 'fade-in')); // remove fade-in from hidden
             
             // Show requested view
             const targetView = document.getElementById(`view-${view}`);
             if (targetView) {
                 targetView.classList.remove('hidden');
+                targetView.classList.add('fade-in'); // Adiciona animação de fade-in
             }
 
             // Update active menu item
@@ -489,7 +498,7 @@
             filteredClientes.forEach(client => {
                 const row = tableBody.insertRow();
                 // MUDANÇA: Estilo de linha para tema escuro
-                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700'; 
+                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150'; // Adicionado transition
                 
                 // Nome
                 row.insertCell().textContent = client.nome;
@@ -524,12 +533,12 @@
             // Atualiza botões
             document.querySelectorAll('.client-tab-btn').forEach(btn => {
                 btn.classList.remove('bg-novan-purple', 'text-white');
-                btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                btn.classList.add('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600'); // Cores ajustadas
             });
             
             const activeBtn = document.getElementById(`client-tab-${filter.toLowerCase().replace(' ', '-')}`);
             if (activeBtn) {
-                activeBtn.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                activeBtn.classList.remove('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600');
                 activeBtn.classList.add('bg-novan-purple', 'text-white');
             }
 
@@ -583,12 +592,12 @@
             // Atualiza botões
             document.querySelectorAll('.fatura-tab-btn').forEach(btn => {
                 btn.classList.remove('bg-novan-purple', 'text-white');
-                btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                btn.classList.add('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600'); // Cores ajustadas
             });
             
             const activeBtn = document.getElementById(`tab-${filter.toLowerCase().replace(' ', '-')}`);
             if (activeBtn) {
-                activeBtn.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                activeBtn.classList.remove('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600');
                 activeBtn.classList.add('bg-novan-purple', 'text-white');
             }
 
@@ -623,7 +632,7 @@
 
                 const row = tableBody.insertRow();
                 // MUDANÇA: Estilo de linha para tema escuro
-                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700'; 
+                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150'; // Adicionado transition
                 
                 // Cliente
                 row.insertCell().textContent = client.nome;
@@ -648,7 +657,7 @@
                 // Update Status
                 const select = document.createElement('select');
                 // MUDANÇA: Adicionado texto claro e fundo escuro para o select
-                select.className = 'p-2 border border-gray-700 bg-gray-700 text-gray-100 rounded-md text-sm cursor-pointer'; 
+                select.className = 'p-2 border border-gray-700 bg-gray-700 text-gray-100 rounded-md text-sm cursor-pointer transition duration-150'; 
                 select.title = 'Mudar Status';
                 
                 // Options
@@ -830,54 +839,54 @@
                     <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
                     <span class="text-xl font-extrabold text-white">Novan Agency</span> <!-- MUDANÇA: text-gray-800 para text-white -->
                 </div>
-                <button onclick="toggleMobileMenu()" class="text-white p-2 rounded-lg hover:bg-gray-700"> <!-- MUDANÇA: text-gray-700 para text-white -->
+                <button onclick="toggleMobileMenu()" class="text-white p-2 rounded-lg hover:bg-gray-700 transition duration-150"> <!-- Adicionado transition -->
                     <!-- Icone de Menu -->
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
                 <!-- Menu Mobile Dropdown -->
                 <!-- MUDANÇA: Menu dropdown para tema escuro -->
                 <nav id="mobile-menu" class="absolute top-full left-0 w-full bg-gray-700 shadow-lg p-4 hidden border-t border-gray-600 rounded-b-xl z-50">
-                    <button onclick="navigateTo('dashboard')" class="menu-item block w-full text-left p-3 rounded-lg bg-novan-purple text-white mb-2">📊 Dashboard</button>
-                    <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2">👤 Clientes</button>
-                    <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2">🧾 Faturas</button>
-                    <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700">🚪 Sair</button>
+                    <button onclick="navigateTo('dashboard')" class="menu-item block w-full text-left p-3 rounded-lg bg-novan-purple text-white mb-2 transition duration-150">📊 Dashboard</button>
+                    <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">👤 Clientes</button>
+                    <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🧾 Faturas</button>
+                    <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">🚪 Sair</button>
                 </nav>
             </header>
 
             <!-- Alerta de Faturas Vencidas -->
-            <div id="overdue-alert" class="hidden p-4 mb-6 text-sm text-white bg-novan-red rounded-xl shadow-lg" role="alert">
+            <div id="overdue-alert" class="hidden p-4 mb-6 text-sm text-white bg-novan-red rounded-xl shadow-lg transition duration-300" role="alert">
                 <span class="font-bold">⚠️ Atenção!</span> Você possui <span id="overdue-count" class="font-extrabold"></span> em faturas ATRASADAS.
             </div>
 
             <!-- ---------------------- VIEW: DASHBOARD ---------------------- -->
+            <!-- Adicionado fade-in via JS -->
             <div id="view-dashboard" class="app-view space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Dashboard Financeiro</h2>
 
                 <!-- Cartões de Resumo Financeiro -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <!-- Total Recebido -->
-                    <!-- MUDANÇA: Card para bg-gray-800 e texto claro -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 hover:shadow-xl">
+                    <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total Recebido (💰)</p>
                         <p id="total-recebido" class="text-3xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total a Receber -->
-                    <!-- MUDANÇA: Card para bg-gray-800 e texto claro -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300 hover:shadow-xl">
+                    <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total a Receber (📅)</p>
                         <p id="total-a-receber" class="text-3xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total em Atraso -->
-                    <!-- MUDANÇA: Card para bg-gray-800 e texto claro -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 hover:shadow-xl">
+                    <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total em Atraso (⚠️)</p>
                         <p id="total-atrasado" class="text-3xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
                 </div>
 
                 <!-- Gráfico Chart.js -->
-                <!-- MUDANÇA: Card para bg-gray-800 e texto claro -->
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Status Financeiro</h3>
                     <div class="h-80 w-full">
                         <canvas id="financeChart"></canvas>
@@ -886,35 +895,36 @@
             </div>
 
             <!-- ---------------------- VIEW: CLIENTES ---------------------- -->
+            <!-- Adicionado fade-in via JS -->
             <div id="view-clientes" class="app-view hidden space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Cadastro e Gestão de Clientes</h2>
                 
                 <div id="client-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
                 <!-- MUDANÇA: Card para bg-gray-800 e texto claro -->
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Novo Cadastro</h3>
                     <form id="client-form" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Nome Completo -->
                             <div>
                                 <label for="nome" class="block text-sm font-medium text-gray-300">Nome Completo</label>
-                                <input type="text" id="nome" name="nome" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
+                                <input type="text" id="nome" name="nome" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Telefone (WhatsApp) -->
                             <div>
                                 <label for="telefone" class="block text-sm font-medium text-gray-300">Telefone (WhatsApp)</label>
-                                <input type="tel" id="telefone" name="telefone" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
+                                <input type="tel" id="telefone" name="telefone" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Valor do Contrato (R$) -->
                             <div>
                                 <label for="valorContrato" class="block text-sm font-medium text-gray-300">Valor do Contrato (R$)</label>
-                                <input type="number" step="0.01" id="valorContrato" name="valorContrato" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
+                                <input type="number" step="0.01" id="valorContrato" name="valorContrato" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Data da Entrada -->
                             <div>
                                 <label for="dataEntrada" class="block text-sm font-medium text-gray-300">Data da Entrada</label>
-                                <input type="date" id="dataEntrada" name="dataEntrada" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
+                                <input type="date" id="dataEntrada" name="dataEntrada" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
                         
@@ -929,10 +939,10 @@
                 
                 <!-- Tab Navigation para Filtragem de Clientes -->
                 <div class="flex flex-wrap gap-3">
-                    <button id="client-tab-all" onclick="setClientFilter('all')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-novan-purple text-white">Todos</button>
+                    <button id="client-tab-all" onclick="setClientFilter('all')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-novan-purple text-white">Todos</button>
                     <!-- MUDANÇA: Cores dos botões de filtro para tema escuro -->
-                    <button id="client-tab-ativo" onclick="setClientFilter('Ativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-700 text-gray-100 hover:bg-gray-600">✅ Ativos</button>
-                    <button id="client-tab-inativo" onclick="setClientFilter('Inativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-700 text-gray-100 hover:bg-gray-600">❌ Inativos</button>
+                    <button id="client-tab-ativo" onclick="setClientFilter('Ativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">✅ Ativos</button>
+                    <button id="client-tab-inativo" onclick="setClientFilter('Inativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">❌ Inativos</button>
                 </div>
 
                 <!-- Tabela de Clientes -->
@@ -957,16 +967,17 @@
             </div>
 
             <!-- ---------------------- VIEW: FATURAS ---------------------- -->
+            <!-- Adicionado fade-in via JS -->
             <div id="view-faturas" class="app-view hidden space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Controle de Faturas</h2>
                 
                 <!-- NOVO: Tab Navigation para Filtragem -->
                 <div class="flex flex-wrap gap-3">
-                    <button id="tab-all" onclick="setFaturaFilter('all')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-novan-purple text-white">Todas</button>
+                    <button id="tab-all" onclick="setFaturaFilter('all')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-novan-purple text-white">Todas</button>
                     <!-- MUDANÇA: Cores dos botões de filtro para tema escuro -->
-                    <button id="tab-pago" onclick="setFaturaFilter('Pago')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-700 text-gray-100 hover:bg-gray-600">✅ Pago</button>
-                    <button id="tab-a-receber" onclick="setFaturaFilter('A receber')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-700 text-gray-100 hover:bg-gray-600">⏳ A Receber</button>
-                    <button id="tab-atrasado" onclick="setFaturaFilter('Atrasado')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition bg-gray-700 text-gray-100 hover:bg-gray-600">⚠️ Vencidas</button>
+                    <button id="tab-pago" onclick="setFaturaFilter('Pago')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">✅ Pago</button>
+                    <button id="tab-a-receber" onclick="setFaturaFilter('A receber')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">⏳ A Receber</button>
+                    <button id="tab-atrasado" onclick="setFaturaFilter('Atrasado')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">⚠️ Vencidas</button>
                 </div>
                 
                 <div id="faturas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
