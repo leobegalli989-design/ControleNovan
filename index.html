@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novan - Gestão de Cobranças</title>
+    <title>Novan - Gestão de Cobranças (FIREBASE)</title>
     <!-- Carrega Tailwind CSS e Chart.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Define a fonte Inter e o esquema de cores da Novan -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        /* CSS para animação de transição de tela */
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #1f2937; } /* Fundo escuro */
+        .fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -25,145 +22,108 @@
             theme: {
                 extend: {
                     colors: {
-                        'novan-purple': '#7A52F7', // Roxo suave da Novan
-                        'novan-light': '#F3F4F6',  // Cinza claro para fundo (Não usado no body, mas mantido)
-                        'novan-green': '#10B981',  // Verde para Pago / Ativo
-                        'novan-yellow': '#F59E0B', // Amarelo para A Receber
-                        'novan-red': '#EF4444',    // Vermelho para Atrasado
+                        'novan-purple': '#7A52F7', 
+                        'novan-green': '#10B981', 
+                        'novan-yellow': '#F59E0B',
+                        'novan-red': '#EF4444', 
                     }
                 }
             }
         }
     </script>
-</head>
-<body class="bg-gray-900 min-h-screen"> <!-- MUDANÇA: Fundo em tom escuro -->
-
-    <!-- Firebase Imports -->
+    
+    <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, serverTimestamp, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global Firebase and App Variables
-        let db;
-        let auth;
-        let userId = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // INCLUÍDO: Configuração do Firebase fornecida pelo usuário
-        const firebaseConfig = {
-            apiKey: "AIzaSyD4Q0fUJGNLz6pm8GYbtyrnLLN5dh1jNeA",
-            authDomain: "financeiro-novan.firebaseapp.com",
-            projectId: "financeiro-novan",
-            storageBucket: "financeiro-novan.firebasestorage.app",
-            messagingSenderId: "124879794673",
-            appId: "1:124879794673:web:0fa7769ca61c6582cd9450"
-        };
-        // FIM: Configuração do Firebase
         
-        // Set log level for debugging
-        setLogLevel('Debug');
+        // Ativar logging detalhado no console para debug do Firestore
+        setLogLevel('debug');
 
-        // Initializing Firebase
-        function setupFirebase() {
-            try {
-                // MUDANÇA: Usando a configuração hardcoded acima
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // Atribuindo a variáveis globais para acesso de outras funções
-                window.db = db;
-                window.auth = auth;
-                window.appId = appId;
-                
-                // Authentication Logic
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        // User is signed in.
-                        userId = user.uid;
-                        console.log("Usuário autenticado:", userId);
-                        document.getElementById('auth-screen').classList.add('hidden');
-                        document.getElementById('app-container').classList.remove('hidden');
-                        
-                        // Start listeners and navigation
-                        initApp(userId);
-                        navigateTo('dashboard');
-                    } else {
-                        // User is signed out.
-                        userId = null;
-                        console.log("Usuário deslogado. Exibindo tela de login.");
-                        document.getElementById('auth-screen').classList.remove('hidden');
-                        document.getElementById('app-container').classList.add('hidden');
-                    }
-                });
+        // --- ENVIRONMENT VARIABLES (OBRIGATÓRIO) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-novan-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-                // CORREÇÃO: Removendo o bloco de sign-in automático (CustomToken e Anônimo)
-                // para resolver o erro 'auth/configuration-not-found', pois o login
-                // será feito via formulário de E-mail/Senha.
-
-            } catch (error) {
-                console.error("Erro ao configurar Firebase:", error);
-                document.getElementById('auth-message').textContent = 'Erro ao carregar o Firebase. Verifique a configuração.';
-                document.getElementById('auth-message').classList.remove('hidden');
-            }
+        let app;
+        if (firebaseConfig) {
+            app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.auth = getAuth(app);
+        } else {
+            console.error("ERRO CRÍTICO: Configuração do Firebase não está disponível.");
+            // Impedir a inicialização do app se a config não estiver presente
+            document.addEventListener('DOMContentLoaded', () => {
+                const messageEl = document.getElementById('auth-message');
+                if (messageEl) {
+                    messageEl.textContent = 'Erro de inicialização: Configuração do Firebase está faltando.';
+                    messageEl.classList.remove('hidden');
+                }
+            });
         }
-
-        document.addEventListener('DOMContentLoaded', setupFirebase);
         
-        // --- Core Application Logic (Must be defined globally or within a self-executing function) ---
-
-        // As variáveis globais (window.db, window.auth, window.appId) são definidas dentro de setupFirebase()
-        // para garantir que a inicialização ocorra uma única vez.
-        
-        let totalRecebido = 0;
-        let totalAReceber = 0;
-        let totalAtrasado = 0;
+        // --- GLOBAL STATE ---
+        window.isAuthReady = false; 
+        window.userId = null;
+        let allClientesArray = []; 
         let allFaturas = [];
-        let allClientes = {}; // Map of client ID to client name/phone for quick lookup
-        let allClientesArray = []; // Array to hold all client objects for client list/filtering
-        let currentFaturaFilter = 'all'; // Variável de estado para o filtro de faturas
-        let currentClientFilter = 'all'; // NOVO: Variável de estado para o filtro de clientes
-        
-        // NOVO: Variáveis para Despesas
-        let totalDespesas = 0;
         let allDespesas = [];
-        let despesasListener = null;
+        let currentFaturaFilter = 'all'; 
+        let currentClientFilter = 'all'; 
+        let myChart = null;
 
-        // Utility: Formatar moeda
+        // --- UTILITY FUNCTIONS ---
+        
+        // Função para obter o caminho da coleção para o usuário logado (PRIVADO)
+        window.getCollectionPath = (collectionName) => {
+            if (!window.userId) {
+                console.error("ERRO: userId não definido para acessar o Firestore.");
+                return null;
+            }
+            return `artifacts/${appId}/users/${window.userId}/${collectionName}`;
+        };
+
         const formatCurrency = (value) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
         };
 
-        // Utility: Formatar data
-        const formatDate = (timestamp) => {
-            if (!timestamp) return 'N/A';
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        const formatDate = (date) => {
+            if (!date) return 'N/A';
+            if (date.toDate) date = date.toDate(); // Converte Firebase Timestamp para Date
             return date.toLocaleDateString('pt-BR');
         };
 
-        // Utility: Exibir mensagem de ação (sucesso/erro)
+        const createSafeDate = (dateString) => {
+            if (!dateString) return new Date();
+            const [year, month, day] = dateString.split('-').map(Number);
+            // Cria a data ao meio-dia para evitar problemas de fuso horário
+            return new Date(year, month - 1, day, 12, 0, 0); 
+        };
+
         const showActionMessage = (message, isSuccess = true) => {
-            // Priority to Faturas message element, fallback to Client message element, fallback to Despesas message
             const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message') || document.getElementById('despesas-message');
             
+            if (!messageEl) return;
+            
             messageEl.textContent = message;
-            messageEl.classList.remove('hidden', 'bg-green-100', 'text-novan-green', 'bg-red-100', 'text-novan-red');
-            if (isSuccess) {
+            messageEl.classList.remove('hidden', 'bg-green-100', 'text-novan-green', 'bg-red-100', 'text-novan-red', 'bg-yellow-100', 'text-novan-yellow');
+            
+            if (isSuccess === true) {
                 messageEl.classList.add('bg-green-100', 'text-novan-green');
-                messageEl.classList.remove('bg-red-100', 'text-novan-red');
-            } else {
+            } else if (isSuccess === false) {
                 messageEl.classList.add('bg-red-100', 'text-novan-red');
-                messageEl.classList.remove('bg-green-100', 'text-novan-green');
+            } else {
+                messageEl.classList.add('bg-yellow-100', 'text-novan-yellow'); 
             }
+            messageEl.classList.remove('hidden');
             setTimeout(() => messageEl.classList.add('hidden'), 5000);
         };
 
-        // Utility: Definir status e cor
-        const getStatusDetails = (status, vencimentoTimestamp) => {
+        const getStatusDetails = (status, vencimentoDate) => {
             const now = new Date();
-            let vencimento = vencimentoTimestamp.toDate ? vencimentoTimestamp.toDate() : new Date(vencimentoTimestamp);
+            let vencimento = (vencimentoDate && vencimentoDate.toDate) ? vencimentoDate.toDate() : vencimentoDate;
             
             let statusText = status;
             let statusColor = '';
@@ -171,216 +131,109 @@
             if (status === 'Pago') {
                 statusColor = 'bg-novan-green';
                 statusText = '✅ Pago';
-            } else if (status === 'A receber' && vencimento < now) {
+            } else if (status === 'A receber' && vencimento && vencimento < now) {
                 statusColor = 'bg-novan-red';
                 statusText = '⚠️ Atrasado';
-                // Override status variable for dashboard calculation and filtering
                 status = 'Atrasado'; 
             } else if (status === 'A receber') {
                 statusColor = 'bg-novan-yellow';
                 statusText = '⏳ A receber';
-                // Override status variable for dashboard calculation and filtering
                 status = 'A receber';
-            } else {
-                // If status is 'Atrasado' but hasn't been Pago, treat as Atrasado (e.g., if manually set)
+            } else if (status === 'Atrasado') { // Handle pre-existing 'Atrasado' status
                  statusColor = 'bg-novan-red';
                  statusText = '⚠️ Atrasado';
-                 status = 'Atrasado';
+            } else {
+                 statusColor = 'bg-gray-500';
+                 statusText = 'Desconhecido';
+                 status = 'Desconhecido';
             }
+
 
             return { status, statusText, statusColor };
         };
 
-        // --- AUTH FUNCTIONS ---
-        window.handleAuth = async (type) => {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            const messageEl = document.getElementById('auth-message');
-
-            if (!email || !password) {
-                messageEl.textContent = 'Preencha todos os campos.';
-                messageEl.classList.remove('hidden', 'text-novan-green');
-                messageEl.classList.add('text-novan-red');
-                return;
-            }
-
-            messageEl.classList.add('hidden');
-
-            try {
-                if (type === 'register') {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    messageEl.textContent = 'Registro realizado com sucesso! Você será redirecionado.';
-                    messageEl.classList.remove('hidden', 'text-novan-red');
-                    messageEl.classList.add('text-novan-green');
-                } else {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    messageEl.textContent = 'Login bem-sucedido! Você será redirecionado.';
-                    messageEl.classList.remove('hidden', 'text-novan-red');
-                    messageEl.classList.add('text-novan-green');
-                }
-            } catch (error) {
-                console.error("Erro de autenticação:", error);
-                messageEl.textContent = `Erro: ${error.message}`;
-                messageEl.classList.remove('hidden', 'text-novan-green');
-                messageEl.classList.add('text-novan-red');
-            }
-        };
-
-        window.logout = async () => {
-            try {
-                await signOut(auth);
-                // The onAuthStateChanged listener handles the UI change
-            } catch (error) {
-                console.error("Erro ao fazer logout:", error);
-            }
-        };
-
-        // --- NAVIGATION ---
+        // --- NAVIGATION & UI ---
+        
         window.navigateTo = (view) => {
-            // Hide all views
-            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden', 'fade-in')); // remove fade-in from hidden
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden')); 
             
-            // Show requested view
             const targetView = document.getElementById(`view-${view}`);
             if (targetView) {
                 targetView.classList.remove('hidden');
-                targetView.classList.add('fade-in'); // Adiciona animação de fade-in
+                targetView.classList.add('fade-in'); 
             }
 
-            // Update active menu item
             document.querySelectorAll('.menu-item').forEach(el => {
-                // REMOVE active and old inactive classes
-                el.classList.remove('bg-novan-purple', 'text-white', 'text-gray-700', 'hover:bg-novan-light');
-                // ADD new inactive classes (for dark sidebar)
+                el.classList.remove('bg-novan-purple', 'text-white');
                 el.classList.add('text-gray-300', 'hover:bg-gray-700'); 
             });
-            // Set the active button
             const activeMenuItem = document.getElementById(`menu-${view}`);
-            activeMenuItem.classList.add('bg-novan-purple', 'text-white');
-            activeMenuItem.classList.remove('text-gray-300', 'hover:bg-gray-700'); // Remove inactive classes from active item
+            if (activeMenuItem) {
+                activeMenuItem.classList.add('bg-novan-purple', 'text-white');
+                activeMenuItem.classList.remove('text-gray-300', 'hover:bg-gray-700');
+            }
 
 
-            // Hide mobile menu after click
             document.getElementById('mobile-menu').classList.add('hidden');
             
-            // NOVO: Se for para Faturas ou Clientes, garantir que o filtro inicial seja 'all' e a aba correta esteja ativa.
             if (view === 'faturas') {
                 setFaturaFilter('all');
             } else if (view === 'clientes') {
                 setClientFilter('all');
             }
-            // Não precisa de filtro para Despesas, apenas renderiza.
         };
 
         window.toggleMobileMenu = () => {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         };
 
+        // --- DASHBOARD & RENDER FUNCTIONS ---
 
-        // --- FIREBASE LISTENERS & DASHBOARD UPDATE ---
-        let faturasListener = null;
-        let clientesListener = null;
-        let myChart = null;
+        const calculateDashboardTotals = () => {
+            let totalRecebido = 0;
+            let totalAReceber = 0;
+            let totalAtrasado = 0;
+            let totalDespesas = 0;
 
-        const initApp = (currentUserId) => {
-            window.userId = currentUserId; // Set global userId
-            const clientesPath = `artifacts/${appId}/users/${window.userId}/clientes`;
-            const faturasPath = `artifacts/${appId}/users/${window.userId}/faturas`;
-            const despesasPath = `artifacts/${appId}/users/${window.userId}/despesas`; // NOVO
-
-            if (faturasListener) faturasListener(); // Unsubscribe previous listener
-            if (clientesListener) clientesListener(); // Unsubscribe previous listener
-            if (despesasListener) despesasListener(); // NOVO: Unsubscribe previous listener
-
-            // 1. Clientes Listener (Populate lookup map AND list array)
-            const qClientes = query(collection(db, clientesPath));
-            clientesListener = onSnapshot(qClientes, (snapshot) => {
-                allClientes = {};
-                allClientesArray = []; // Reset array
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    allClientes[doc.id] = { nome: data.nome, telefone: data.telefone };
-                    allClientesArray.push({ id: doc.id, ...data });
-                });
-                console.log("Clientes atualizados:", allClientesArray.length);
+            // Faturas
+            allFaturas.forEach(fatura => {
+                const { status } = getStatusDetails(fatura.status, fatura.vencimento);
+                const valor = parseFloat(fatura.valor);
                 
-                // Render client list view
-                renderClientesTable(allClientesArray);
+                if (isNaN(valor)) return; 
 
-                // If faturas have already loaded, update the faturas table
-                if (allFaturas.length > 0) {
-                     renderFaturasTable(allFaturas);
+                if (status === 'Pago') {
+                    totalRecebido += valor;
+                } else if (status === 'A receber') {
+                    totalAReceber += valor;
+                } else if (status === 'Atrasado') {
+                    totalAtrasado += valor;
                 }
-            }, (error) => {
-                console.error("Erro ao ouvir clientes:", error);
             });
 
-            // 2. Faturas Listener (Main data source)
-            const qFaturas = query(collection(db, faturasPath));
-            faturasListener = onSnapshot(qFaturas, (snapshot) => {
-                totalRecebido = 0;
-                totalAReceber = 0;
-                totalAtrasado = 0;
-                allFaturas = [];
-
-                snapshot.forEach(doc => {
-                    const fatura = { id: doc.id, ...doc.data() };
-                    const valor = parseFloat(fatura.valor);
-                    
-                    const { status } = getStatusDetails(fatura.status, fatura.vencimento);
-
-                    if (status === 'Pago') {
-                        totalRecebido += valor;
-                    } else if (status === 'A receber') {
-                        totalAReceber += valor;
-                    } else if (status === 'Atrasado') {
-                        totalAtrasado += valor;
-                    }
-                    allFaturas.push(fatura);
-                });
-
-                // Sort by due date (vencimento)
-                allFaturas.sort((a, b) => (a.vencimento.toMillis() - b.vencimento.toMillis()));
-
-                updateDashboard();
-                renderFaturasTable(allFaturas);
-            }, (error) => {
-                console.error("Erro ao ouvir faturas:", error);
+            // Despesas
+            allDespesas.forEach(despesa => {
+                const valor = parseFloat(despesa.valor);
+                if (isNaN(valor)) return; 
+                totalDespesas += valor;
             });
             
-            // 3. NOVO: Despesas Listener
-            const qDespesas = query(collection(db, despesasPath));
-            despesasListener = onSnapshot(qDespesas, (snapshot) => {
-                totalDespesas = 0;
-                allDespesas = [];
+            const totalLucro = totalRecebido - totalDespesas;
 
-                snapshot.forEach(doc => {
-                    const despesa = { id: doc.id, ...doc.data() };
-                    const valor = parseFloat(despesa.valor);
-                    
-                    totalDespesas += valor;
-                    allDespesas.push(despesa);
-                });
-                
-                // Ordenar por data da despesa, mais recente primeiro
-                allDespesas.sort((a, b) => (b.dataDespesa.toMillis() - a.dataDespesa.toMillis()));
-
-                renderDespesasTable(allDespesas);
-                updateDashboard(); // Adicionado aqui para atualizar o novo card de despesas
-            }, (error) => {
-                console.error("Erro ao ouvir despesas:", error);
-            });
-        };
-
-        const updateDashboard = () => {
             // Update summary cards
             document.getElementById('total-recebido').textContent = formatCurrency(totalRecebido);
             document.getElementById('total-a-receber').textContent = formatCurrency(totalAReceber);
             document.getElementById('total-atrasado').textContent = formatCurrency(totalAtrasado);
-            // NOVO: Atualiza Despesas
             document.getElementById('total-despesas-dashboard').textContent = formatCurrency(totalDespesas); 
             
-            // Check for overdue alert
+            // Update Lucro Card
+            document.getElementById('total-lucro').textContent = formatCurrency(totalLucro); 
+            const lucroCard = document.getElementById('lucro-card');
+            const lucroColor = totalLucro >= 0 ? 'border-novan-green' : 'border-novan-red';
+            lucroCard.classList.remove('border-novan-green', 'border-novan-red');
+            lucroCard.classList.add(lucroColor);
+            
+            // Overdue alert
             const overdueAlert = document.getElementById('overdue-alert');
             if (totalAtrasado > 0) {
                 overdueAlert.classList.remove('hidden');
@@ -391,113 +244,160 @@
 
             // Update Chart.js
             const ctx = document.getElementById('financeChart').getContext('2d');
-            if (myChart) {
-                myChart.destroy();
-            }
+            if (myChart) myChart.destroy();
 
             myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Recebido', 'A Receber', 'Atrasado'],
                     datasets: [{
-                        // Excluímos Despesas do gráfico de cobranças para focar em Recebíveis
                         data: [totalRecebido, totalAReceber, totalAtrasado], 
-                        backgroundColor: [
-                            '#10B981', // novan-green
-                            '#F59E0B', // novan-yellow
-                            '#EF4444'  // novan-red
-                        ],
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
                         hoverOffset: 4
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: 'white' // Cor da legenda para o fundo escuro
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed !== null) {
-                                        label += formatCurrency(context.parsed);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { color: 'white' } }, 
+                        tooltip: { callbacks: { label: (c) => `${c.label}: ${formatCurrency(c.parsed)}` } } 
+                    } 
                 }
+            });
+            
+            // Re-render tables to reflect latest data and statuses
+            renderFaturasTable(allFaturas);
+            renderClientesTable(allClientesArray);
+            renderDespesasTable(allDespesas);
+        };
+
+        // --- AUTHENTICATION ---
+        
+        window.handleAuth = async (type) => {
+            if (!window.auth) return;
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const messageEl = document.getElementById('auth-message');
+            messageEl.classList.add('hidden');
+
+            if (!email || !password) {
+                messageEl.textContent = 'Por favor, preencha E-mail e Senha.';
+                messageEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                if (type === 'register') {
+                    await createUserWithEmailAndPassword(window.auth, email, password);
+                    messageEl.textContent = 'Registro bem-sucedido! Entrando...';
+                    messageEl.classList.remove('hidden');
+                } else {
+                    await signInWithEmailAndPassword(window.auth, email, password);
+                }
+            } catch (error) {
+                messageEl.textContent = `Erro: ${error.message}`;
+                messageEl.classList.remove('hidden');
+            }
+        };
+
+        window.logout = async () => {
+            if (!window.auth) return;
+            try {
+                await signOut(window.auth);
+            } catch (error) {
+                console.error("Erro ao fazer logout:", error);
+            }
+        };
+
+        // --- FIREBASE LISTENERS ---
+        
+        const setupFirestoreListeners = () => {
+            if (!window.db || !window.userId) return;
+
+            const clientesPath = getCollectionPath('clientes');
+            const faturasPath = getCollectionPath('faturas');
+            const despesasPath = getCollectionPath('despesas');
+
+            if (!clientesPath || !faturasPath || !despesasPath) return;
+
+            // Listener de Clientes
+            onSnapshot(collection(window.db, clientesPath), (snapshot) => {
+                allClientesArray = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("[CLIENTES LISTENER] Clientes atualizados:", allClientesArray.length);
+                calculateDashboardTotals();
+            }, (error) => {
+                console.error("Erro ao ouvir clientes (Verifique as Regras de Segurança):", error);
+            });
+
+            // Listener de Faturas
+            onSnapshot(collection(window.db, faturasPath), (snapshot) => {
+                allFaturas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("[FATURAS LISTENER] Faturas atualizadas:", allFaturas.length);
+                calculateDashboardTotals();
+            }, (error) => {
+                console.error("Erro ao ouvir faturas (Verifique as Regras de Segurança):", error);
+            });
+
+            // Listener de Despesas
+            onSnapshot(collection(window.db, despesasPath), (snapshot) => {
+                allDespesas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("[DESPESAS LISTENER] Despesas atualizadas:", allDespesas.length);
+                calculateDashboardTotals();
+            }, (error) => {
+                console.error("Erro ao ouvir despesas (Verifique as Regras de Segurança):", error);
             });
         };
 
-        // --- CLIENTE MANAGEMENT ---
-        window.onload = function() {
-            document.getElementById('client-form').addEventListener('submit', handleNewClient);
-            document.getElementById('expense-form').addEventListener('submit', handleNewExpense);
-        };
+        // --- CLIENTE MANAGEMENT (FIREBASE CRUD) ---
 
         async function handleNewClient(event) {
             event.preventDefault();
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
             const form = event.target;
             const nome = form.nome.value;
             const telefone = form.telefone.value;
             const valorContrato = parseFloat(form.valorContrato.value);
-            // CORREÇÃO DE DATA:
-            const dateValue = form.dataEntrada.value;
-            const [year, month, day] = dateValue.split('-').map(Number);
-            // Cria a data no horário de 12:00 do dia local para evitar problemas de fuso horário UTC (que causavam o erro de 1 dia)
-            const dataEntrada = new Date(year, month - 1, day, 12, 0, 0); 
-            // FIM CORREÇÃO DE DATA
+            const dataEntrada = createSafeDate(form.dataEntrada.value); 
             
-            const clientsCollection = collection(db, `artifacts/${appId}/users/${window.userId}/clientes`);
-            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
-            const messageEl = document.getElementById('client-message');
-
-            if (!nome || !telefone || isNaN(valorContrato) || valorContrato <= 0 || !dataEntrada) {
-                messageEl.textContent = 'Preencha todos os campos corretamente.';
-                messageEl.classList.remove('hidden', 'text-novan-green');
-                messageEl.classList.add('text-novan-red');
+            if (!nome || !telefone || isNaN(valorContrato) || valorContrato <= 0 || isNaN(dataEntrada.getTime())) {
+                showActionMessage('Preencha todos os campos corretamente, incluindo uma data válida.', false);
                 return;
             }
 
-            messageEl.classList.add('hidden');
+            showActionMessage(`Processando cadastro e gerando faturas iniciais...`, 'processing');
 
             try {
-                // 1. Add Client
-                const newClientRef = await addDoc(clientsCollection, {
+                const clientesRef = collection(window.db, getCollectionPath('clientes'));
+                const newClientRef = await addDoc(clientesRef, {
                     nome,
                     telefone,
-                    valorContrato,
-                    dataEntrada: serverTimestamp(),
-                    status: 'Ativo', // NOVO: Status padrão
+                    valorContrato: valorContrato,
+                    dataEntrada: dataEntrada, 
+                    status: 'Ativo', 
                     createdAt: serverTimestamp()
                 });
-                const clientId = newClientRef.id;
+                const clienteId = newClientRef.id;
 
-                // 2. Generate Initial Fatura (PAID)
-                await addDoc(invoicesCollection, {
-                    clienteId: clientId,
+                // 2. Generate Initial Fatura (PAID) - Assumimos que a primeira fatura é paga na entrada
+                const faturasRef = collection(window.db, getCollectionPath('faturas'));
+                await addDoc(faturasRef, {
+                    clienteId,
                     valor: valorContrato,
-                    vencimento: dataEntrada, // Initial invoice is the date of entry
+                    vencimento: dataEntrada, 
                     status: 'Pago',
                     criadoEm: serverTimestamp()
                 });
 
-                // 3. Generate Next Fatura (A RECEBER - Same day next month)
+                // 3. Generate Next Fatura (A RECEBER) - Para o mês seguinte
                 const nextVencimento = new Date(dataEntrada);
-                nextVencimento.setMonth(nextVencimento.getMonth() + 1); // Adiciona 1 mês, mantendo o dia
+                nextVencimento.setMonth(nextVencimento.getMonth() + 1); 
                 
-                await addDoc(invoicesCollection, {
-                    clienteId: clientId,
+                await addDoc(faturasRef, {
+                    clienteId,
                     valor: valorContrato,
                     vencimento: nextVencimento,
                     status: 'A receber',
@@ -505,20 +405,60 @@
                 });
 
                 form.reset();
-                showActionMessage(`Cliente ${nome} e suas duas primeiras faturas criadas com sucesso!`, true);
+                showActionMessage(`Cliente ${nome} e faturas criadas com sucesso!`, true);
 
             } catch (e) {
-                console.error("Erro ao adicionar cliente/fatura:", e);
-                showActionMessage(`Erro ao salvar dados: ${e.message}`, false);
+                console.error("ERRO CRÍTICO ao adicionar cliente/fatura:", e);
+                showActionMessage(`ERRO: Falha no cadastro. Mensagem: ${e.message}`, false); 
+            }
+        }
+        window.handleNewClient = handleNewClient;
+
+        window.updateClientStatus = async (clientId, newStatus) => {
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
+            try {
+                const docRef = doc(window.db, getCollectionPath('clientes'), clientId);
+                await updateDoc(docRef, { status: newStatus });
+                showActionMessage(`Status do cliente atualizado para ${newStatus}!`, true);
+            } catch (e) {
+                showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
+            }
+        };
+        
+        window.deleteClient = async (clientId) => {
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
+            const faturasPath = getCollectionPath('faturas');
+            try {
+                // 1. Delete all associated Faturas (Requires getting them first)
+                const faturasRef = collection(window.db, faturasPath);
+                const q = query(faturasRef, where("clienteId", "==", clientId));
+                
+                const snapshot = await getDocs(q); 
+                let removedFaturasCount = 0;
+                for (const faturaDoc of snapshot.docs) {
+                    await deleteDoc(doc(window.db, faturasPath, faturaDoc.id));
+                    removedFaturasCount++;
+                }
+
+                // 2. Delete Client document
+                const clientDocRef = doc(window.db, getCollectionPath('clientes'), clientId);
+                await deleteDoc(clientDocRef);
+                
+                showActionMessage(`Cadastro e ${removedFaturasCount} faturas removidos com sucesso.`, true);
+            } catch (e) {
+                showActionMessage(`Erro ao excluir cadastro: ${e.message}`, false);
             }
         }
 
-        // --- CLIENTE LISTING & FILTERING ---
-        
-        // Função para filtrar e renderizar a lista de clientes
         const renderClientesTable = (clientes) => {
             const tableBody = document.getElementById('clientes-table-body');
-            tableBody.innerHTML = ''; // Limpa dados anteriores
+            tableBody.innerHTML = ''; 
             
             let filteredClientes = clientes;
             if (currentClientFilter !== 'all') {
@@ -532,26 +472,20 @@
 
             filteredClientes.forEach(client => {
                 const row = tableBody.insertRow();
-                // MUDANÇA: Estilo de linha para tema escuro
-                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150'; // Adicionado transition
+                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
                 
-                // Nome
                 row.insertCell().textContent = client.nome;
-                
-                // Telefone
                 row.insertCell().textContent = client.telefone;
+                row.insertCell().textContent = formatCurrency(client.valorContrato || 0);
                 
-                // Valor
-                row.insertCell().textContent = formatCurrency(client.valorContrato);
-                
-                // Status
                 const statusCell = row.insertCell();
                 const statusColor = client.status === 'Ativo' ? 'bg-novan-green' : 'bg-gray-500';
                 const statusText = client.status === 'Ativo' ? '✅ Ativo' : '❌ Inativo';
                 statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
 
-                // Ações (Update Status)
                 const actionCell = row.insertCell();
+                actionCell.classList.add('flex', 'items-center', 'space-x-2');
+
                 const toggleBtn = document.createElement('button');
                 const newStatus = client.status === 'Ativo' ? 'Inativo' : 'Ativo';
                 toggleBtn.textContent = newStatus === 'Ativo' ? 'Ativar' : 'Inativar';
@@ -559,16 +493,21 @@
                 toggleBtn.className = 'p-2 text-sm text-white rounded-lg transition duration-150 font-semibold ' + (client.status === 'Ativo' ? 'bg-gray-500 hover:bg-gray-600' : 'bg-novan-green hover:bg-novan-purple');
                 toggleBtn.onclick = () => updateClientStatus(client.id, newStatus);
                 actionCell.appendChild(toggleBtn);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = `Excluir Cadastro e Faturas`;
+                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.onclick = () => deleteClient(client.id);
+                actionCell.appendChild(deleteBtn);
             });
         };
 
-        // Função para definir o filtro de clientes
         window.setClientFilter = (filter) => {
             currentClientFilter = filter;
-            // Atualiza botões
             document.querySelectorAll('.client-tab-btn').forEach(btn => {
                 btn.classList.remove('bg-novan-purple', 'text-white');
-                btn.classList.add('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600'); // Cores ajustadas
+                btn.classList.add('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600');
             });
             
             const activeBtn = document.getElementById(`client-tab-${filter.toLowerCase().replace(' ', '-')}`);
@@ -577,57 +516,30 @@
                 activeBtn.classList.add('bg-novan-purple', 'text-white');
             }
 
-            // Renderiza a tabela novamente com o novo filtro
             renderClientesTable(allClientesArray);
         };
         
-        // Função para alterar o status do cliente no Firestore
-        window.updateClientStatus = async (clientId, newStatus) => {
-            const clientsCollection = collection(db, `artifacts/${appId}/users/${window.userId}/clientes`);
-            const docRef = doc(clientsCollection, clientId);
-            
-            try {
-                await setDoc(docRef, { status: newStatus }, { merge: true });
-                console.log(`Cliente ${clientId} atualizado para ${newStatus}`);
-                showActionMessage(`Status do cliente atualizado para ${newStatus}!`, true);
-            } catch (e) {
-                console.error("Erro ao atualizar status do cliente:", e);
-                showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
-            }
-        };
+        // --- FATURA MANAGEMENT (FIREBASE CRUD) ---
         
-        // --- FATURA MANAGEMENT ---
-        
-        // NOVO: Função para excluir fatura
         window.deleteFatura = async (faturaId) => {
-            if (!window.userId) {
-                console.error("Usuário não autenticado.");
-                showActionMessage('Erro: Usuário não autenticado.', false);
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
                 return;
             }
-            
-            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
-            const docRef = doc(invoicesCollection, faturaId);
-
             try {
-                // Using Firestore deleteDoc
+                const docRef = doc(window.db, getCollectionPath('faturas'), faturaId);
                 await deleteDoc(docRef);
-                console.log(`Fatura ${faturaId} excluída com sucesso.`);
                 showActionMessage('Fatura excluída com sucesso!');
-                // onSnapshot handles UI refresh automatically
             } catch (e) {
-                console.error("Erro ao excluir fatura:", e);
                 showActionMessage(`Erro ao excluir fatura: ${e.message}`, false);
             }
         }
         
-        // Função para definir o filtro de faturas
         window.setFaturaFilter = (filter) => {
             currentFaturaFilter = filter;
-            // Atualiza botões
             document.querySelectorAll('.fatura-tab-btn').forEach(btn => {
                 btn.classList.remove('bg-novan-purple', 'text-white');
-                btn.classList.add('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600'); // Cores ajustadas
+                btn.classList.add('bg-gray-700', 'text-gray-100', 'hover:bg-gray-600'); 
             });
             
             const activeBtn = document.getElementById(`tab-${filter.toLowerCase().replace(' ', '-')}`);
@@ -636,24 +548,36 @@
                 activeBtn.classList.add('bg-novan-purple', 'text-white');
             }
 
-            // Renderiza a tabela novamente com o novo filtro
             renderFaturasTable(allFaturas);
         };
 
 
         const renderFaturasTable = (faturas) => {
             const tableBody = document.getElementById('faturas-table-body');
-            tableBody.innerHTML = ''; // Clear previous data
+            tableBody.innerHTML = ''; 
+            
+            const clientMap = allClientesArray.reduce((acc, client) => {
+                acc[client.id] = { nome: client.nome, telefone: client.telefone };
+                return acc;
+            }, {});
 
-            // Lógica de Filtragem
             let filteredFaturas = faturas;
+            // O filtro é feito pelo status CALCULADO (A receber, Pago, Atrasado), não pelo status literal do BD
             if (currentFaturaFilter !== 'all') {
                 filteredFaturas = faturas.filter(fatura => {
-                    // Usa o status calculado para filtrar (necessário para 'Atrasado')
                     const { status } = getStatusDetails(fatura.status, fatura.vencimento);
                     return status === currentFaturaFilter;
                 });
             }
+            
+            // Sort by due date (vencimento)
+            filteredFaturas.sort((a, b) => {
+                const dateA = a.vencimento && a.vencimento.toDate ? a.vencimento.toDate().getTime() : 0;
+                const dateB = b.vencimento && b.vencimento.toDate ? b.vencimento.toDate().getTime() : 0;
+                // Ordenar por data (mais antigas primeiro)
+                return dateA - dateB; 
+            });
+
 
             if (filteredFaturas.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhuma fatura encontrada com o filtro atual.</td></tr>`;
@@ -661,72 +585,63 @@
             }
 
             filteredFaturas.forEach(fatura => {
-                const client = allClientes[fatura.clienteId] || { nome: 'Cliente Desconhecido', telefone: 'N/A' };
-                // Usa o status real (calculado) para a cor e texto da célula
-                const { statusText, statusColor } = getStatusDetails(fatura.status, fatura.vencimento); 
+                const client = clientMap[fatura.clienteId] || { nome: 'Cliente Desconhecido', telefone: 'N/A' };
+                const { statusText, statusColor, status } = getStatusDetails(fatura.status, fatura.vencimento); 
 
                 const row = tableBody.insertRow();
-                // MUDANÇA: Estilo de linha para tema escuro
-                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150'; // Adicionado transition
+                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
                 
-                // Cliente
                 row.insertCell().textContent = client.nome;
-                
-                // Telefone
                 row.insertCell().textContent = client.telefone;
-                
-                // Valor
-                row.insertCell().textContent = formatCurrency(fatura.valor);
-                
-                // Vencimento
+                row.insertCell().textContent = formatCurrency(fatura.valor || 0);
                 row.insertCell().textContent = formatDate(fatura.vencimento);
                 
-                // Status
                 const statusCell = row.insertCell();
                 statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
 
-                // Ações
                 const actionCell = row.insertCell();
                 actionCell.classList.add('flex', 'items-center', 'space-x-2');
 
                 // Update Status
                 const select = document.createElement('select');
-                // MUDANÇA: Adicionado texto claro e fundo escuro para o select
                 select.className = 'p-2 border border-gray-700 bg-gray-700 text-gray-100 rounded-md text-sm cursor-pointer transition duration-150'; 
                 select.title = 'Mudar Status';
                 
-                // Options
-                const options = ['A receber', 'Pago']; // Atrasado é calculado automaticamente
+                const options = ['A receber', 'Pago']; 
                 options.forEach(opt => {
                     const option = document.createElement('option');
                     option.value = opt;
                     option.textContent = opt;
-                    // Se o status da fatura for Pago, selecionar Pago. Senão, assumir A receber (que será corrigido para Atrasado se vencido)
                     if (fatura.status === opt) {
                         option.selected = true;
                     }
-                    select.appendChild(option); // Adicionado aqui para garantir que todas as opções sejam adicionadas
+                    select.appendChild(option); 
                 });
                 
-                // Disable update if already Paid
-                if (fatura.status === 'Pago') {
+                // Só permite alterar se não estiver 'Pago'
+                if (status === 'Pago') {
                     select.disabled = true;
+                    select.title = 'Fatura paga não pode ser alterada.';
                 } else {
-                    // Event Listener for update
+                    // Pre-select current status (which might be 'A receber' even if it's 'Atrasado' in the logic)
+                    if (fatura.status === 'A receber') select.querySelector(`option[value="A receber"]`).selected = true;
+                    
                     select.addEventListener('change', (e) => updateFaturaStatus(fatura.id, e.target.value));
                 }
 
                 actionCell.appendChild(select);
 
-                // Ações (Gerar Nova Fatura)
-                const generateBtn = document.createElement('button');
-                generateBtn.textContent = '➕';
-                generateBtn.title = 'Gerar Próxima Fatura';
-                generateBtn.className = 'p-2 text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150';
-                generateBtn.onclick = () => generateNextFatura(fatura.clienteId, fatura.valor, fatura.vencimento.toDate());
-                actionCell.appendChild(generateBtn);
+                // Ações (Gerar Nova Fatura) - Botão só aparece para faturas pagas (indicando o fim do ciclo de cobrança)
+                if(status === 'Pago') {
+                    const generateBtn = document.createElement('button');
+                    generateBtn.textContent = '➕';
+                    generateBtn.title = 'Gerar Próxima Fatura';
+                    generateBtn.className = 'p-2 text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150';
+                    generateBtn.onclick = () => generateNextFatura(fatura.clienteId, fatura.valor, fatura.vencimento);
+                    actionCell.appendChild(generateBtn);
+                }
                 
-                // NOVO: Ações (Excluir Fatura)
+                // Ações (Excluir Fatura)
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = `Excluir Fatura`;
@@ -737,74 +652,66 @@
         };
 
         async function updateFaturaStatus(faturaId, newStatus) {
-            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
-            const docRef = doc(invoicesCollection, faturaId);
-            
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
             try {
-                // Update only the status field
-                await setDoc(docRef, { status: newStatus }, { merge: true });
-                console.log(`Fatura ${faturaId} atualizada para ${newStatus}`);
-                showActionMessage('Status da fatura atualizado com sucesso!');
-                // The onSnapshot listener handles UI refresh
+                const docRef = doc(window.db, getCollectionPath('faturas'), faturaId);
+                await updateDoc(docRef, { status: newStatus });
+                showActionMessage('Status da fatura atualizado com sucesso!', true);
             } catch (e) {
-                console.error("Erro ao atualizar status da fatura:", e);
                 showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
             }
         }
         
         async function generateNextFatura(clienteId, valorContrato, lastDueDate) {
-            const invoicesCollection = collection(db, `artifacts/${appId}/users/${window.userId}/faturas`);
-            
-            // Calculate next month, same day
-            const nextVencimento = new Date(lastDueDate);
-            nextVencimento.setMonth(nextVencimento.getMonth() + 1); // Adiciona 1 mês, mantendo o dia
-            
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
             try {
-                await addDoc(invoicesCollection, {
-                    clienteId: clienteId,
+                const lastDate = (lastDueDate && lastDueDate.toDate) ? lastDueDate.toDate() : createSafeDate(new Date().toISOString().split('T')[0]);
+                
+                const nextVencimento = new Date(lastDate);
+                nextVencimento.setMonth(nextVencimento.getMonth() + 1); 
+                
+                const faturasRef = collection(window.db, getCollectionPath('faturas'));
+                await addDoc(faturasRef, {
+                    clienteId,
                     valor: valorContrato,
                     vencimento: nextVencimento,
                     status: 'A receber',
                     criadoEm: serverTimestamp()
                 });
-
-                showActionMessage(`Próxima fatura (${formatCurrency(valorContrato)}) gerada para ${formatDate(nextVencimento)}.`);
-
+                showActionMessage(`Próxima fatura (${formatCurrency(valorContrato)}) gerada para ${formatDate(nextVencimento)}.`, true);
             } catch (e) {
-                console.error("Erro ao gerar nova fatura:", e);
-                showActionMessage(`Erro ao gerar nova fatura: ${e.message}`, false);
+                showActionMessage(`Erro ao gerar próxima fatura: ${e.message}`, false);
             }
         }
         
-        // --- DESPESAS MANAGEMENT ---
+        // --- DESPESAS MANAGEMENT (FIREBASE CRUD) ---
 
         async function handleNewExpense(event) {
-            event.preventDefault(); // ESSENCIAL: Previne o duplo envio do formulário
+            event.preventDefault(); 
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
             const form = document.getElementById('expense-form');
             const descricao = form.descricao.value;
             const categoria = form.categoria.value;
             const valor = parseFloat(form.valorDespesa.value);
+            const dataDespesa = createSafeDate(form.dataDespesa.value); 
             
-            // CORREÇÃO DE DATA
-            const dateValue = form.dataDespesa.value;
-            const [year, month, day] = dateValue.split('-').map(Number);
-            const dataDespesa = new Date(year, month - 1, day, 12, 0, 0); 
-            // FIM CORREÇÃO DE DATA
-            
-            const despesasCollection = collection(db, `artifacts/${appId}/users/${window.userId}/despesas`);
-            const messageEl = document.getElementById('despesas-message');
-
-            if (!descricao || isNaN(valor) || valor <= 0 || !dataDespesa || !categoria) {
-                messageEl.textContent = 'Preencha todos os campos corretamente.';
-                messageEl.classList.remove('hidden', 'text-novan-green');
-                messageEl.classList.add('text-novan-red');
+            if (!descricao || isNaN(valor) || valor <= 0 || !categoria || isNaN(dataDespesa.getTime())) {
+                showActionMessage('Preencha todos os campos corretamente.', false);
                 return;
             }
 
-            messageEl.classList.add('hidden');
-
             try {
-                await addDoc(despesasCollection, {
+                const despesasRef = collection(window.db, getCollectionPath('despesas'));
+                await addDoc(despesasRef, {
                     descricao,
                     categoria,
                     valor,
@@ -813,7 +720,7 @@
                 });
 
                 form.reset();
-                showActionMessage(`Despesa "${descricao}" no valor de ${formatCurrency(valor)} registrada com sucesso!`, true);
+                showActionMessage(`Despesa "${descricao}" registrada com sucesso!`, true);
 
             } catch (e) {
                 console.error("Erro ao adicionar despesa:", e);
@@ -823,21 +730,15 @@
         window.handleNewExpense = handleNewExpense; 
         
         async function deleteDespesa(despesaId) {
-            if (!window.userId) {
-                console.error("Usuário não autenticado.");
-                showActionMessage('Erro: Usuário não autenticado.', false);
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
                 return;
             }
-            
-            const despesasCollection = collection(db, `artifacts/${appId}/users/${window.userId}/despesas`);
-            const docRef = doc(despesasCollection, despesaId);
-
             try {
+                const docRef = doc(window.db, getCollectionPath('despesas'), despesaId);
                 await deleteDoc(docRef);
                 showActionMessage('Despesa excluída com sucesso!');
-                // onSnapshot handles UI refresh automatically
             } catch (e) {
-                console.error("Erro ao excluir despesa:", e);
                 showActionMessage(`Erro ao excluir despesa: ${e.message}`, false);
             }
         }
@@ -847,7 +748,7 @@
             const tableBody = document.getElementById('despesas-table-body');
             tableBody.innerHTML = '';
             
-            // Atualiza o card de resumo de despesas na VIEW DESPESAS
+            let totalDespesas = despesas.reduce((sum, d) => sum + parseFloat(d.valor || 0), 0);
             const summaryEl = document.getElementById('total-despesas-summary');
             if(summaryEl) summaryEl.textContent = formatCurrency(totalDespesas); 
 
@@ -855,6 +756,13 @@
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>`;
                 return;
             }
+            
+            // Ordenar por data da despesa, mais recente primeiro
+            despesas.sort((a, b) => {
+                const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
+                const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
+                return dateB - dateA;
+            });
 
             despesas.forEach(despesa => {
                 const row = tableBody.insertRow();
@@ -865,7 +773,6 @@
                 row.insertCell().textContent = despesa.categoria;
                 row.insertCell().textContent = formatCurrency(despesa.valor);
 
-                // Ações (Excluir)
                 const actionCell = row.insertCell();
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
@@ -877,36 +784,89 @@
         }
 
 
-    </script>
-    </script>
+        // --- APPLICATION INITIALIZATION ---
 
-    <!-- ---------------------- TELA DE LOGIN ---------------------- -->
+        async function initApp() {
+            if (!window.auth) return;
+
+            // 1. Set Persistence (Always good practice)
+            try {
+                await setPersistence(window.auth, browserLocalPersistence);
+            } catch (e) {
+                console.warn("Falha ao definir persistência de autenticação.", e);
+            }
+
+            // 2. Attempt Canvas Custom Token Sign In (Highest Priority)
+            if (initialAuthToken) {
+                try {
+                    await signInWithCustomToken(window.auth, initialAuthToken);
+                    // onAuthStateChanged will handle UI update
+                } catch (e) {
+                    console.error("Falha na autenticação do Canvas com token customizado. Queda para onAuthStateChanged.", e);
+                    // Fall through to onAuthStateChanged, which will detect no user and show auth screen
+                }
+            }
+            
+            // 3. Fallback to onAuthStateChanged listener which manages UI visibility
+            onAuthStateChanged(window.auth, (user) => {
+                if (user) {
+                    // Usuário logado
+                    window.userId = user.uid;
+                    window.isAuthReady = true;
+                    
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('app-container').classList.remove('hidden');
+                    document.getElementById('user-id-display').textContent = `ID Usuário: ${window.userId}`;
+
+                    setupFirestoreListeners();
+                    navigateTo('dashboard');
+                } else {
+                    // Usuário deslogado
+                    window.userId = null;
+                    window.isAuthReady = false;
+                    document.getElementById('app-container').classList.add('hidden');
+                    document.getElementById('auth-screen').classList.remove('hidden');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+             if (firebaseConfig) {
+                 // Inicializa event listeners de formulário (apenas uma vez)
+                 document.getElementById('client-form').addEventListener('submit', handleNewClient);
+                 document.getElementById('expense-form').addEventListener('submit', handleNewExpense);
+                 initApp();
+             }
+        });
+
+    </script>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- ---------------------- TELA DE LOGIN (FIREBASE AUTH) ---------------------- -->
     <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
-        <!-- MUDANÇA: Fundo do login agora é gray-800 e texto branco para melhor contraste com o bg-gray-900 -->
         <div class="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-2xl"> 
             <div class="flex flex-col items-center mb-8">
-                <!-- Logo da Novan - Espaço reservado -->
                 <div class="h-12 w-12 bg-novan-purple rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4">N</div>
-                <h1 class="text-3xl font-bold text-gray-100">Login Novan Billing</h1> <!-- MUDANÇA: text-gray-800 para text-gray-100 -->
-                <p class="text-gray-400">Acesso exclusivo para administradores.</p> <!-- MUDANÇA: text-gray-500 para text-gray-400 -->
+                <h1 class="text-3xl font-bold text-gray-100">Login Novan Billing</h1>
+                <p class="text-gray-400">Acesso exclusivo para administradores.</p>
             </div>
             
-            <div id="auth-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-red-100 text-novan-red"></div>
+            <div id="auth-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-red-800 text-red-200"></div>
 
             <div class="space-y-4">
                 <div>
-                    <label for="auth-email" class="block text-sm font-medium text-gray-300">E-mail</label> <!-- MUDANÇA: text-gray-700 para text-gray-300 -->
+                    <label for="auth-email" class="block text-sm font-medium text-gray-300">E-mail</label>
                     <input type="email" id="auth-email" class="mt-1 block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
                 </div>
                 <div>
-                    <label for="auth-password" class="block text-sm font-medium text-gray-300">Senha</label> <!-- MUDANÇA: text-gray-700 para text-gray-300 -->
+                    <label for="auth-password" class="block text-sm font-medium text-gray-300">Senha</label>
                     <input type="password" id="auth-password" class="mt-1 block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
                 </div>
                 
                 <button onclick="handleAuth('login')" class="w-full py-3 px-4 bg-novan-purple text-white font-semibold rounded-lg shadow-lg hover:bg-opacity-90 transition duration-200">
                     Entrar
                 </button>
-                <!-- MUDANÇA: Botão de registro em cor escura -->
                 <button onclick="handleAuth('register')" class="w-full py-3 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
                     Registrar (Primeiro Acesso)
                 </button>
@@ -919,31 +879,21 @@
     <div id="app-container" class="hidden flex min-h-screen">
         
         <!-- Sidebar/Menu Lateral -->
-        <aside class="fixed inset-y-0 left-0 w-64 bg-gray-800 shadow-xl transition-transform duration-300 transform -translate-x-full md:translate-x-0 z-40" id="sidebar"> <!-- bg-gray-800 mantido -->
-            <div class="p-6">
+        <aside class="fixed inset-y-0 left-0 w-64 bg-gray-800 shadow-xl transition-transform duration-300 transform -translate-x-full md:translate-x-0 z-40" id="sidebar">
+            <div class="p-6 flex flex-col h-full">
                 <!-- Logo da Novan -->
                 <div class="flex items-center space-x-2 mb-8">
                     <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
                     <span class="text-xl font-extrabold text-white">Novan Agency</span>
                 </div>
                 
-                <!-- ID do Usuário (Para fins de debug e identificação) -->
+                <!-- ID do Usuário (Para Debug) -->
                 <div class="text-xs text-gray-400 mb-6 border-b border-gray-700 pb-4">
-                    ID Usuário: <span id="display-user-id" class="break-all font-mono text-gray-400" title="Seu ID único no Firestore."></span>
-                    <script>
-                        // Updates the user ID display after successful authentication
-                        if(typeof onAuthStateChanged !== 'undefined' && typeof auth !== 'undefined') {
-                            onAuthStateChanged(auth, (user) => {
-                                if(user) {
-                                    document.getElementById('display-user-id').textContent = user.uid;
-                                }
-                            });
-                        }
-                    </script>
+                    <span id="user-id-display" class="break-all font-mono text-gray-400">ID Usuário: N/A</span>
                 </div>
 
                 <!-- Menu de Navegação -->
-                <nav class="space-y-2">
+                <nav class="space-y-2 flex-1">
                     <button id="menu-dashboard" onclick="navigateTo('dashboard')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-white bg-novan-purple">
                         <span class="mr-3">📊</span> Dashboard
                     </button>
@@ -953,18 +903,18 @@
                     <button id="menu-faturas" onclick="navigateTo('faturas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
                         <span class="mr-3">🧾</span> Faturas
                     </button>
-                    <!-- NOVO: Botão Despesas -->
+                    <!-- Botão Despesas -->
                     <button id="menu-despesas" onclick="navigateTo('despesas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
                         <span class="mr-3">💸</span> Despesas
                     </button>
                 </nav>
-            </div>
-            
-            <!-- Botão Sair -->
-            <div class="absolute bottom-0 w-full p-6 border-t border-gray-700">
-                <button onclick="logout()" class="flex items-center w-full p-3 rounded-xl text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">
-                    <span class="mr-3">🚪</span> Sair
-                </button>
+                
+                <!-- Botão Sair -->
+                <div class="mt-auto pt-6 border-t border-gray-700">
+                    <button onclick="logout()" class="flex items-center w-full p-3 rounded-xl text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">
+                        <span class="mr-3">🚪</span> Sair
+                    </button>
+                </div>
             </div>
         </aside>
 
@@ -972,25 +922,22 @@
         <main class="flex-1 md:ml-64 p-4 lg:p-8 transition-all duration-300">
             
             <!-- Header Fixo (para mobile) e Toggle -->
-            <!-- MUDANÇA: Header mobile para tema escuro -->
             <header class="md:hidden sticky top-0 bg-gray-800 shadow-xl p-4 flex justify-between items-center z-30 mb-4 rounded-xl">
-                 <div class="flex items-center space-x-2">
-                    <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
-                    <span class="text-xl font-extrabold text-white">Novan Agency</span> <!-- MUDANÇA: text-gray-800 para text-white -->
-                </div>
-                <button onclick="toggleMobileMenu()" class="text-white p-2 rounded-lg hover:bg-gray-700 transition duration-150"> <!-- Adicionado transition -->
-                    <!-- Icone de Menu -->
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </button>
-                <!-- Menu Mobile Dropdown -->
-                <!-- MUDANÇA: Menu dropdown para tema escuro -->
-                <nav id="mobile-menu" class="absolute top-full left-0 w-full bg-gray-700 shadow-lg p-4 hidden border-t border-gray-600 rounded-b-xl z-50">
-                    <button onclick="navigateTo('dashboard')" class="menu-item block w-full text-left p-3 rounded-lg bg-novan-purple text-white mb-2 transition duration-150">📊 Dashboard</button>
-                    <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">👤 Clientes</button>
-                    <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🧾 Faturas</button>
-                    <button onclick="navigateTo('despesas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">💸 Despesas</button>
-                    <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">🚪 Sair</button>
-                </nav>
+                    <div class="flex items-center space-x-2">
+                        <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
+                        <span class="text-xl font-extrabold text-white">Novan Agency</span>
+                    </div>
+                    <button onclick="toggleMobileMenu()" class="text-white p-2 rounded-lg hover:bg-gray-700 transition duration-150">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                    <!-- Menu Mobile Dropdown -->
+                    <nav id="mobile-menu" class="absolute top-full left-0 w-full bg-gray-700 shadow-lg p-4 hidden border-t border-gray-600 rounded-b-xl z-50">
+                        <button onclick="navigateTo('dashboard')" class="menu-item block w-full text-left p-3 rounded-lg bg-novan-purple text-white mb-2 transition duration-150">📊 Dashboard</button>
+                        <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">👤 Clientes</button>
+                        <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🧾 Faturas</button>
+                        <button onclick="navigateTo('despesas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">💸 Despesas</button>
+                        <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">🚪 Sair</button>
+                    </nav>
             </header>
 
             <!-- Alerta de Faturas Vencidas -->
@@ -999,35 +946,38 @@
             </div>
 
             <!-- ---------------------- VIEW: DASHBOARD ---------------------- -->
-            <!-- Adicionado fade-in via JS -->
             <div id="view-dashboard" class="app-view space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Dashboard Financeiro</h2>
 
                 <!-- Cartões de Resumo Financeiro -->
-                <!-- MUDANÇA: Layout para 4 colunas -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <!-- Total Recebido -->
-                    <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
                     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total Recebido (💰)</p>
-                        <p id="total-recebido" class="text-3xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
+                        <p id="total-recebido" class="text-2xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total a Receber -->
-                    <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
                     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total a Receber (📅)</p>
-                        <p id="total-a-receber" class="text-3xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
+                        <p id="total-a-receber" class="text-2xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total em Atraso -->
-                    <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
                     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total em Atraso (⚠️)</p>
-                        <p id="total-atrasado" class="text-3xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
+                        <p id="total-atrasado" class="text-2xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
-                    <!-- NOVO: Total em Despesas -->
+                    <!-- Total em Despesas -->
                     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-gray-500 transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total em Despesas (💸)</p>
-                        <p id="total-despesas-dashboard" class="text-3xl font-extrabold text-gray-400 mt-1">R$ 0,00</p>
+                        <p id="total-despesas-dashboard" class="text-2xl font-extrabold text-gray-400 mt-1">R$ 0,00</p>
+                    </div>
+                </div>
+
+                <!-- Cartão de Lucro Líquido (Destaque) -->
+                <div class="grid grid-cols-1">
+                    <div id="lucro-card" class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-purple transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                        <p class="text-lg font-medium text-gray-300">Lucro Líquido (Recebido - Despesas)</p>
+                        <p id="total-lucro" class="text-3xl font-extrabold text-novan-purple mt-2">R$ 0,00</p>
                     </div>
                 </div>
 
@@ -1041,13 +991,11 @@
             </div>
 
             <!-- ---------------------- VIEW: CLIENTES ---------------------- -->
-            <!-- Adicionado fade-in via JS -->
             <div id="view-clientes" class="app-view hidden space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Cadastro e Gestão de Clientes</h2>
                 
                 <div id="client-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
-                <!-- MUDANÇA: Card para bg-gray-800 e texto claro -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Novo Cadastro</h3>
                     <form id="client-form" class="space-y-4">
@@ -1080,32 +1028,29 @@
                     </form>
                 </div>
 
-                <!-- NOVO: Seção de Listagem e Filtro -->
+                <!-- Seção de Listagem e Filtro -->
                 <h2 class="text-2xl font-bold text-gray-100 pt-4">Clientes Cadastrados</h2>
                 
                 <!-- Tab Navigation para Filtragem de Clientes -->
                 <div class="flex flex-wrap gap-3">
                     <button id="client-tab-all" onclick="setClientFilter('all')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-novan-purple text-white">Todos</button>
-                    <!-- MUDANÇA: Cores dos botões de filtro para tema escuro -->
                     <button id="client-tab-ativo" onclick="setClientFilter('Ativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">✅ Ativos</button>
                     <button id="client-tab-inativo" onclick="setClientFilter('Inativo')" class="client-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">❌ Inativos</button>
                 </div>
 
                 <!-- Tabela de Clientes -->
-                <!-- MUDANÇA: Tabela e cabeçalho para tema escuro -->
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nome</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Contrato</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ação</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nome</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Contrato</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="clientes-table-body" class="divide-y divide-gray-700 text-gray-100">
-                            <!-- Clientes serão injetados aqui pelo JS -->
                             <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado.</td></tr>
                         </tbody>
                     </table>
@@ -1113,14 +1058,12 @@
             </div>
 
             <!-- ---------------------- VIEW: FATURAS ---------------------- -->
-            <!-- Adicionado fade-in via JS -->
             <div id="view-faturas" class="app-view hidden space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Controle de Faturas</h2>
                 
-                <!-- NOVO: Tab Navigation para Filtragem -->
+                <!-- Tab Navigation para Filtragem -->
                 <div class="flex flex-wrap gap-3">
                     <button id="tab-all" onclick="setFaturaFilter('all')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-novan-purple text-white">Todas</button>
-                    <!-- MUDANÇA: Cores dos botões de filtro para tema escuro -->
                     <button id="tab-pago" onclick="setFaturaFilter('Pago')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">✅ Pago</button>
                     <button id="tab-a-receber" onclick="setFaturaFilter('A receber')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">⏳ A Receber</button>
                     <button id="tab-atrasado" onclick="setFaturaFilter('Atrasado')" class="fatura-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 bg-gray-700 text-gray-100 hover:bg-gray-600">⚠️ Vencidas</button>
@@ -1129,28 +1072,26 @@
                 <div id="faturas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
                 <!-- Tabela de Faturas -->
-                <!-- MUDANÇA: Tabela e cabeçalho para tema escuro -->
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vencimento</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vencimento</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="faturas-table-body" class="divide-y divide-gray-700 text-gray-100">
-                            <!-- Faturas serão injetadas aqui pelo JS -->
                             <tr><td colspan="6" class="p-4 text-center text-gray-500">Carregando faturas...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
             
-            <!-- ---------------------- NOVO: VIEW DESPESAS ---------------------- -->
+            <!-- ---------------------- VIEW: DESPESAS ---------------------- -->
             <div id="view-despesas" class="app-view hidden space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Gestão de Despesas</h2>
                 
@@ -1161,14 +1102,13 @@
                     <!-- Total de Despesas -->
                     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total de Despesas (💸)</p>
-                        <p id="total-despesas-summary" class="text-3xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
+                        <p id="total-despesas-summary" class="text-2xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
                 </div>
 
                 <!-- Formulário de Nova Despesa -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Nova Despesa</h3>
-                    <!-- CORREÇÃO: Removido onsubmit="handleNewExpense(event)" para evitar duplo envio -->
                     <form id="expense-form" class="space-y-4"> 
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <!-- Descrição -->
@@ -1212,15 +1152,14 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoria</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoria</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="despesas-table-body" class="divide-y divide-gray-700 text-gray-100">
-                            <!-- Despesas serão injetadas aqui pelo JS -->
                             <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>
                         </tbody>
                     </table>
