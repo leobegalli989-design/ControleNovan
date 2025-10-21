@@ -125,6 +125,11 @@
         let allClientesArray = []; // Array to hold all client objects for client list/filtering
         let currentFaturaFilter = 'all'; // Variável de estado para o filtro de faturas
         let currentClientFilter = 'all'; // NOVO: Variável de estado para o filtro de clientes
+        
+        // NOVO: Variáveis para Despesas
+        let totalDespesas = 0;
+        let allDespesas = [];
+        let despesasListener = null;
 
         // Utility: Formatar moeda
         const formatCurrency = (value) => {
@@ -140,8 +145,8 @@
 
         // Utility: Exibir mensagem de ação (sucesso/erro)
         const showActionMessage = (message, isSuccess = true) => {
-            // Priority to Faturas message element, fallback to Client message element
-            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message');
+            // Priority to Faturas message element, fallback to Client message element, fallback to Despesas message
+            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message') || document.getElementById('despesas-message');
             
             messageEl.textContent = message;
             messageEl.classList.remove('hidden', 'bg-green-100', 'text-novan-green', 'bg-red-100', 'text-novan-red');
@@ -264,6 +269,7 @@
             } else if (view === 'clientes') {
                 setClientFilter('all');
             }
+            // Não precisa de filtro para Despesas, apenas renderiza.
         };
 
         window.toggleMobileMenu = () => {
@@ -280,9 +286,11 @@
             window.userId = currentUserId; // Set global userId
             const clientesPath = `artifacts/${appId}/users/${window.userId}/clientes`;
             const faturasPath = `artifacts/${appId}/users/${window.userId}/faturas`;
+            const despesasPath = `artifacts/${appId}/users/${window.userId}/despesas`; // NOVO
 
             if (faturasListener) faturasListener(); // Unsubscribe previous listener
             if (clientesListener) clientesListener(); // Unsubscribe previous listener
+            if (despesasListener) despesasListener(); // NOVO: Unsubscribe previous listener
 
             // 1. Clientes Listener (Populate lookup map AND list array)
             const qClientes = query(collection(db, clientesPath));
@@ -339,6 +347,29 @@
             }, (error) => {
                 console.error("Erro ao ouvir faturas:", error);
             });
+            
+            // 3. NOVO: Despesas Listener
+            const qDespesas = query(collection(db, despesasPath));
+            despesasListener = onSnapshot(qDespesas, (snapshot) => {
+                totalDespesas = 0;
+                allDespesas = [];
+
+                snapshot.forEach(doc => {
+                    const despesa = { id: doc.id, ...doc.data() };
+                    const valor = parseFloat(despesa.valor);
+                    
+                    totalDespesas += valor;
+                    allDespesas.push(despesa);
+                });
+                
+                // Ordenar por data da despesa, mais recente primeiro
+                allDespesas.sort((a, b) => (b.dataDespesa.toMillis() - a.dataDespesa.toMillis()));
+
+                renderDespesasTable(allDespesas);
+                updateDashboard(); // Adicionado aqui para atualizar o novo card de despesas
+            }, (error) => {
+                console.error("Erro ao ouvir despesas:", error);
+            });
         };
 
         const updateDashboard = () => {
@@ -346,6 +377,8 @@
             document.getElementById('total-recebido').textContent = formatCurrency(totalRecebido);
             document.getElementById('total-a-receber').textContent = formatCurrency(totalAReceber);
             document.getElementById('total-atrasado').textContent = formatCurrency(totalAtrasado);
+            // NOVO: Atualiza Despesas
+            document.getElementById('total-despesas-dashboard').textContent = formatCurrency(totalDespesas); 
             
             // Check for overdue alert
             const overdueAlert = document.getElementById('overdue-alert');
@@ -367,7 +400,8 @@
                 data: {
                     labels: ['Recebido', 'A Receber', 'Atrasado'],
                     datasets: [{
-                        data: [totalRecebido, totalAReceber, totalAtrasado],
+                        // Excluímos Despesas do gráfico de cobranças para focar em Recebíveis
+                        data: [totalRecebido, totalAReceber, totalAtrasado], 
                         backgroundColor: [
                             '#10B981', // novan-green
                             '#F59E0B', // novan-yellow
@@ -408,6 +442,7 @@
         // --- CLIENTE MANAGEMENT ---
         window.onload = function() {
             document.getElementById('client-form').addEventListener('submit', handleNewClient);
+            document.getElementById('expense-form').addEventListener('submit', handleNewExpense);
         };
 
         async function handleNewClient(event) {
@@ -740,6 +775,106 @@
                 showActionMessage(`Erro ao gerar nova fatura: ${e.message}`, false);
             }
         }
+        
+        // --- DESPESAS MANAGEMENT ---
+
+        async function handleNewExpense(event) {
+            event.preventDefault(); // ESSENCIAL: Previne o duplo envio do formulário
+            const form = document.getElementById('expense-form');
+            const descricao = form.descricao.value;
+            const categoria = form.categoria.value;
+            const valor = parseFloat(form.valorDespesa.value);
+            
+            // CORREÇÃO DE DATA
+            const dateValue = form.dataDespesa.value;
+            const [year, month, day] = dateValue.split('-').map(Number);
+            const dataDespesa = new Date(year, month - 1, day, 12, 0, 0); 
+            // FIM CORREÇÃO DE DATA
+            
+            const despesasCollection = collection(db, `artifacts/${appId}/users/${window.userId}/despesas`);
+            const messageEl = document.getElementById('despesas-message');
+
+            if (!descricao || isNaN(valor) || valor <= 0 || !dataDespesa || !categoria) {
+                messageEl.textContent = 'Preencha todos os campos corretamente.';
+                messageEl.classList.remove('hidden', 'text-novan-green');
+                messageEl.classList.add('text-novan-red');
+                return;
+            }
+
+            messageEl.classList.add('hidden');
+
+            try {
+                await addDoc(despesasCollection, {
+                    descricao,
+                    categoria,
+                    valor,
+                    dataDespesa: dataDespesa,
+                    criadoEm: serverTimestamp()
+                });
+
+                form.reset();
+                showActionMessage(`Despesa "${descricao}" no valor de ${formatCurrency(valor)} registrada com sucesso!`, true);
+
+            } catch (e) {
+                console.error("Erro ao adicionar despesa:", e);
+                showActionMessage(`Erro ao salvar despesa: ${e.message}`, false);
+            }
+        }
+        window.handleNewExpense = handleNewExpense; 
+        
+        async function deleteDespesa(despesaId) {
+            if (!window.userId) {
+                console.error("Usuário não autenticado.");
+                showActionMessage('Erro: Usuário não autenticado.', false);
+                return;
+            }
+            
+            const despesasCollection = collection(db, `artifacts/${appId}/users/${window.userId}/despesas`);
+            const docRef = doc(despesasCollection, despesaId);
+
+            try {
+                await deleteDoc(docRef);
+                showActionMessage('Despesa excluída com sucesso!');
+                // onSnapshot handles UI refresh automatically
+            } catch (e) {
+                console.error("Erro ao excluir despesa:", e);
+                showActionMessage(`Erro ao excluir despesa: ${e.message}`, false);
+            }
+        }
+        window.deleteDespesa = deleteDespesa; 
+        
+        function renderDespesasTable(despesas) {
+            const tableBody = document.getElementById('despesas-table-body');
+            tableBody.innerHTML = '';
+            
+            // Atualiza o card de resumo de despesas na VIEW DESPESAS
+            const summaryEl = document.getElementById('total-despesas-summary');
+            if(summaryEl) summaryEl.textContent = formatCurrency(totalDespesas); 
+
+            if (despesas.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>`;
+                return;
+            }
+
+            despesas.forEach(despesa => {
+                const row = tableBody.insertRow();
+                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
+                
+                row.insertCell().textContent = formatDate(despesa.dataDespesa);
+                row.insertCell().textContent = despesa.descricao;
+                row.insertCell().textContent = despesa.categoria;
+                row.insertCell().textContent = formatCurrency(despesa.valor);
+
+                // Ações (Excluir)
+                const actionCell = row.insertCell();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = `Excluir Despesa`;
+                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.onclick = () => deleteDespesa(despesa.id);
+                actionCell.appendChild(deleteBtn);
+            });
+        }
 
 
     </script>
@@ -818,6 +953,10 @@
                     <button id="menu-faturas" onclick="navigateTo('faturas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
                         <span class="mr-3">🧾</span> Faturas
                     </button>
+                    <!-- NOVO: Botão Despesas -->
+                    <button id="menu-despesas" onclick="navigateTo('despesas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
+                        <span class="mr-3">💸</span> Despesas
+                    </button>
                 </nav>
             </div>
             
@@ -849,6 +988,7 @@
                     <button onclick="navigateTo('dashboard')" class="menu-item block w-full text-left p-3 rounded-lg bg-novan-purple text-white mb-2 transition duration-150">📊 Dashboard</button>
                     <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">👤 Clientes</button>
                     <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🧾 Faturas</button>
+                    <button onclick="navigateTo('despesas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">💸 Despesas</button>
                     <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">🚪 Sair</button>
                 </nav>
             </header>
@@ -864,7 +1004,8 @@
                 <h2 class="text-3xl font-bold text-gray-100">Dashboard Financeiro</h2>
 
                 <!-- Cartões de Resumo Financeiro -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- MUDANÇA: Layout para 4 colunas -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <!-- Total Recebido -->
                     <!-- Adicionado hover:scale-[1.02] e ajustado shadow para animação mais viva -->
                     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
@@ -883,11 +1024,16 @@
                         <p class="text-sm font-medium text-gray-300">Total em Atraso (⚠️)</p>
                         <p id="total-atrasado" class="text-3xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
+                    <!-- NOVO: Total em Despesas -->
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-gray-500 transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                        <p class="text-sm font-medium text-gray-300">Total em Despesas (💸)</p>
+                        <p id="total-despesas-dashboard" class="text-3xl font-extrabold text-gray-400 mt-1">R$ 0,00</p>
+                    </div>
                 </div>
 
                 <!-- Gráfico Chart.js -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Status Financeiro</h3>
+                    <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Status Financeiro (Cobranças)</h3>
                     <div class="h-80 w-full">
                         <canvas id="financeChart"></canvas>
                     </div>
@@ -999,6 +1145,83 @@
                         <tbody id="faturas-table-body" class="divide-y divide-gray-700 text-gray-100">
                             <!-- Faturas serão injetadas aqui pelo JS -->
                             <tr><td colspan="6" class="p-4 text-center text-gray-500">Carregando faturas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- ---------------------- NOVO: VIEW DESPESAS ---------------------- -->
+            <div id="view-despesas" class="app-view hidden space-y-8">
+                <h2 class="text-3xl font-bold text-gray-100">Gestão de Despesas</h2>
+                
+                <div id="despesas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
+
+                <!-- Resumo de Despesas (Card Único) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Total de Despesas -->
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                        <p class="text-sm font-medium text-gray-300">Total de Despesas (💸)</p>
+                        <p id="total-despesas-summary" class="text-3xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
+                    </div>
+                </div>
+
+                <!-- Formulário de Nova Despesa -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Nova Despesa</h3>
+                    <!-- CORREÇÃO: Removido onsubmit="handleNewExpense(event)" para evitar duplo envio -->
+                    <form id="expense-form" class="space-y-4"> 
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Descrição -->
+                            <div>
+                                <label for="descricao" class="block text-sm font-medium text-gray-300">Descrição</label>
+                                <input type="text" id="descricao" name="descricao" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Categoria -->
+                            <div>
+                                <label for="categoria" class="block text-sm font-medium text-gray-300">Categoria</label>
+                                <select id="categoria" name="categoria" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                    <option value="" disabled selected>Selecione</option>
+                                    <option value="Pessoal">Pessoal (Salários)</option>
+                                    <option value="Marketing">Marketing/Publicidade</option>
+                                    <option value="Software">Softwares/Serviços Cloud</option>
+                                    <option value="Aluguel">Aluguel/Escritório</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                            <!-- Valor (R$) -->
+                            <div>
+                                <label for="valorDespesa" class="block text-sm font-medium text-gray-300">Valor (R$)</label>
+                                <input type="number" step="0.01" id="valorDespesa" name="valorDespesa" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Data da Despesa -->
+                            <div>
+                                <label for="dataDespesa" class="block text-sm font-medium text-gray-300">Data da Despesa</label>
+                                <input type="date" id="dataDespesa" name="dataDespesa" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 px-4 bg-novan-red text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 transition duration-200">
+                            Registrar Despesa
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Tabela de Despesas -->
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Despesas</h3>
+                <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoria</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="despesas-table-body" class="divide-y divide-gray-700 text-gray-100">
+                            <!-- Despesas serão injetadas aqui pelo JS -->
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>
                         </tbody>
                     </table>
                 </div>
