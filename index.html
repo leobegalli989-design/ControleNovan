@@ -32,6 +32,20 @@
         }
     </script>
     
+<!-- 🔥 Configuração do Firebase (injetada antes do script principal) -->
+<script>
+    window.__firebase_config = JSON.stringify({
+        apiKey: "AIzaSyD4Q0fUJGNLz6pm8GYbtyrnLLN5dh1jNeA",
+        authDomain: "financeiro-novan.firebaseapp.com",
+        projectId: "financeiro-novan",
+        storageBucket: "financeiro-novan.firebasestorage.app",
+        messagingSenderId: "124879794673",
+        appId: "1:124879794673:web:0fa7769ca61c6582cd9450"
+    });
+
+    window.__app_id = "financeiro-novan";
+</script>
+
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -43,6 +57,7 @@
         setLogLevel('debug');
 
         // --- ENVIRONMENT VARIABLES (OBRIGATÓRIO) ---
+        // Estas variáveis agora lerão os valores definidos globalmente acima.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-novan-app';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
