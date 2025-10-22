@@ -74,7 +74,7 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
@@ -408,6 +408,8 @@
             if (!window.auth) return;
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
+            // NOVO: Coleta o estado do checkbox
+            const rememberMe = document.getElementById('remember-me').checked; 
             const messageEl = document.getElementById('auth-message');
             messageEl.classList.add('hidden');
 
@@ -416,8 +418,15 @@
                 messageEl.classList.remove('hidden');
                 return;
             }
-
+            
+            // NOVO: Define o tipo de persistência com base no checkbox
+            const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+            
             try {
+                // 1. Define a persistência ANTES de fazer o login
+                await setPersistence(window.auth, persistenceType);
+                
+                // 2. Faz o login ou registro
                 if (type === 'register') {
                     // Lógica de registro mantida caso o usuário queira reativar essa funcionalidade
                     await createUserWithEmailAndPassword(window.auth, email, password);
@@ -1103,12 +1112,7 @@
         async function initApp() {
             if (!window.auth) return;
 
-            // 1. Set Persistence
-            try {
-                await setPersistence(window.auth, browserLocalPersistence);
-            } catch (e) {
-                console.warn("Falha ao definir persistência de autenticação.", e);
-            }
+            // Removida setPersistence inicial para que handleAuth gerencie a persistência
             
             // 2. Setup Auth State Listener (handles UI toggle once a user is found/logged)
             onAuthStateChanged(window.auth, (user) => {
@@ -1178,6 +1182,16 @@
                     <input type="password" id="auth-password" class="mt-1 block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
                 </div>
                 
+                <!-- NOVO: Checkbox Lembrar-me -->
+                <div class="flex items-center justify-between pt-2">
+                    <div class="flex items-center">
+                        <input id="remember-me" type="checkbox" checked class="h-4 w-4 text-novan-purple border-gray-600 rounded focus:ring-novan-purple bg-gray-700">
+                        <label for="remember-me" class="ml-2 block text-sm text-gray-300">
+                            Lembrar-me
+                        </label>
+                    </div>
+                </div>
+
                 <button onclick="handleAuth('login')" class="w-full py-3 px-4 bg-novan-purple text-white font-semibold rounded-lg shadow-lg hover:bg-opacity-90 transition duration-200">
                     Entrar
                 </button>
