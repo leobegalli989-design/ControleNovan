@@ -201,6 +201,23 @@
             setTimeout(() => messageEl.classList.add('hidden'), 5000);
         };
 
+        // NOVO: Função para exibir o erro de regras de segurança
+        const displayRulesError = (error, collectionName) => {
+            const errorBanner = document.getElementById('rules-error-banner');
+            if (!errorBanner) return;
+
+            console.error(`[ERRO DE PERMISSÃO - ${collectionName}] Por favor, verifique as Regras de Segurança do Firestore.`, error);
+            
+            errorBanner.classList.remove('hidden', 'fade-in');
+            errorBanner.classList.add('bg-red-700/90', 'border-red-500');
+            errorBanner.innerHTML = `
+                <span class="font-bold">🚨 ERRO DE PERMISSÃO DO FIREBASE 🚨</span>
+                <p>Falha ao ler dados de <strong>${collectionName}</strong>. O erro indica que as <strong>Regras de Segurança</strong> do seu projeto Firebase estão bloqueando o acesso do usuário logado.</p>
+                <p class="mt-2 text-xs font-mono bg-red-800 p-1 rounded">Ajuste as regras do Firestore para permitir leitura e escrita para usuários autenticados nos caminhos <code>artifacts/{appId}/users/{userId}/{coleção}</code>.</p>
+            `;
+        };
+
+
         const getStatusDetails = (status, vencimentoDate) => {
             const now = new Date();
             let vencimento = (vencimentoDate && vencimentoDate.toDate) ? vencimentoDate.toDate() : vencimentoDate;
@@ -494,36 +511,41 @@
             if (!clientesPath || !faturasPath || !despesasPath || !avulsosPath) return;
 
             onSnapshot(collection(window.db, clientesPath), (snapshot) => {
+                // Remove o banner de erro se a leitura for bem-sucedida
+                document.getElementById('rules-error-banner').classList.add('hidden');
                 allClientesArray = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[CLIENTES LISTENER] Clientes atualizados:", allClientesArray.length);
                 populateClientDropdowns(); 
                 calculateDashboardTotals();
             }, (error) => {
-                console.error("Erro ao ouvir clientes (Verifique as Regras de Segurança):", error);
+                displayRulesError(error, 'Clientes');
             });
 
             onSnapshot(collection(window.db, faturasPath), (snapshot) => {
+                document.getElementById('rules-error-banner').classList.add('hidden');
                 allFaturas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[FATURAS LISTENER] Faturas atualizadas:", allFaturas.length);
                 calculateDashboardTotals();
             }, (error) => {
-                console.error("Erro ao ouvir faturas (Verifique as Regras de Segurança):", error);
+                displayRulesError(error, 'Faturas');
             });
 
             onSnapshot(collection(window.db, despesasPath), (snapshot) => {
+                document.getElementById('rules-error-banner').classList.add('hidden');
                 allDespesas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[DESPESAS LISTENER] Despesas atualizadas:", allDespesas.length);
                 calculateDashboardTotals();
             }, (error) => {
-                console.error("Erro ao ouvir despesas (Verifique as Regras de Segurança):", error);
+                displayRulesError(error, 'Despesas');
             });
             
             onSnapshot(collection(window.db, avulsosPath), (snapshot) => {
+                document.getElementById('rules-error-banner').classList.add('hidden');
                 allServicosAvulsos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[AVULSOS LISTENER] Serviços Avulsos atualizados:", allServicosAvulsos.length);
                 calculateDashboardTotals();
             }, (error) => {
-                console.error("Erro ao ouvir serviços avulsos (Verifique as Regras de Segurança):", error);
+                displayRulesError(error, 'Serviços Avulsos');
             });
         };
 
@@ -1171,6 +1193,7 @@
                     document.getElementById('auth-screen').classList.add('hidden');
                     document.getElementById('app-container').classList.remove('hidden');
                     document.getElementById('user-id-display').textContent = `ID Usuário: ${window.userId}`;
+                    document.getElementById('rules-error-banner').classList.add('hidden');
 
                     setupFirestoreListeners();
                     navigateTo('dashboard');
@@ -1298,6 +1321,11 @@
 
         <!-- Main Content (inclui o header) -->
         <main class="flex-1 md:ml-64 p-4 lg:p-8 transition-all duration-300">
+            
+            <!-- NOVO: Banner de Erro de Regras de Segurança -->
+            <div id="rules-error-banner" class="hidden p-4 mb-6 text-sm text-red-100 rounded-xl shadow-lg transition duration-300 border-l-4" role="alert">
+                <!-- Conteúdo injetado pelo JavaScript -->
+            </div>
             
             <!-- Header Fixo (para mobile) e Toggle -->
             <header class="md:hidden sticky top-0 bg-gray-800 shadow-xl p-4 flex justify-between items-center z-30 mb-4 rounded-xl">
