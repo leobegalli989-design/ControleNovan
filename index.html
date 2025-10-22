@@ -41,6 +41,12 @@
             overflow-y: auto;
             border: 1px solid #4b5563; /* gray-600 */
         }
+        /* Estilo para as células da tabela ficarem menores em mobile */
+        .table-cell-compact {
+            padding-left: 0.5rem; /* px-2 */
+            padding-right: 0.5rem; /* px-2 */
+            font-size: 0.75rem; /* text-xs */
+        }
     </style>
     <script>
         tailwind.config = {
@@ -667,40 +673,46 @@
                 
                 // Coluna 2: Serviços Contratados (ATUALIZADO)
                 const servicesCell = row.insertCell();
+                servicesCell.classList.add('py-2', 'px-2', 'table-cell-compact'); // Compactação de célula
                 const servicesHtml = (client.servicosContratados || [])
                                     .map(s => `<span class="inline-block bg-novan-purple/30 text-white text-xs font-semibold mr-1 mb-1 px-2 py-0.5 rounded-full">${s.split(' ').slice(0, 2).join(' ')}</span>`)
                                     .join('');
                 servicesCell.innerHTML = servicesHtml || '<span class="text-gray-500 text-xs">Nenhum</span>';
                 
                 // Coluna 3: Telefone
+                const phoneCell = row.insertCell();
+                phoneCell.classList.add('py-2', 'px-2', 'table-cell-compact'); // Compactação de célula
                 const displayPhone = client.telefone ? client.telefone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3') : client.telefone;
-                row.insertCell().textContent = displayPhone;
+                phoneCell.textContent = displayPhone;
                 
                 // Coluna 4: Valor Contrato
-                row.insertCell().textContent = formatCurrency(client.valorContrato || 0);
+                const valorCell = row.insertCell();
+                valorCell.classList.add('py-2', 'px-2', 'table-cell-compact'); // Compactação de célula
+                valorCell.textContent = formatCurrency(client.valorContrato || 0);
                 
                 // Coluna 5: Status
                 const statusCell = row.insertCell();
+                statusCell.classList.add('py-2', 'px-2', 'table-cell-compact'); // Compactação de célula
                 const statusColor = client.status === 'Ativo' ? 'bg-novan-green' : 'bg-gray-500';
                 const statusText = client.status === 'Ativo' ? '✅ Ativo' : '❌ Inativo';
                 statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
 
                 // Coluna 6: Ações
                 const actionCell = row.insertCell();
-                actionCell.classList.add('flex', 'items-center', 'space-x-2');
+                actionCell.classList.add('flex', 'items-center', 'space-x-1', 'py-2', 'px-1'); // Reduzido o padding e espaçamento
 
                 const toggleBtn = document.createElement('button');
                 const newStatus = client.status === 'Ativo' ? 'Inativo' : 'Ativo';
                 toggleBtn.textContent = newStatus === 'Ativo' ? 'Ativar' : 'Inativar';
                 toggleBtn.title = `Mudar status para ${newStatus}`;
-                toggleBtn.className = 'p-2 text-sm text-white rounded-lg transition duration-150 font-semibold ' + (client.status === 'Ativo' ? 'bg-gray-500 hover:bg-gray-600' : 'bg-novan-green hover:bg-novan-purple');
+                toggleBtn.className = 'p-1 text-xs text-white rounded-lg transition duration-150 font-semibold ' + (client.status === 'Ativo' ? 'bg-gray-500 hover:bg-gray-600' : 'bg-novan-green hover:bg-novan-purple'); // Compactado p-1 e text-xs
                 toggleBtn.onclick = () => updateClientStatus(client.id, newStatus);
                 actionCell.appendChild(toggleBtn);
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = `Excluir Cadastro e Faturas`;
-                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.className = 'p-1 text-xs text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150'; // Compactado p-1 e text-xs
                 deleteBtn.onclick = () => deleteClient(client.id);
                 actionCell.appendChild(deleteBtn);
             });
@@ -829,20 +841,27 @@
                 const row = tableBody.insertRow();
                 row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
                 
+                // Coluna Cliente
                 row.insertCell().textContent = client.nome;
+                // Coluna Telefone
                 const displayPhone = client.telefone ? client.telefone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3') : client.telefone;
                 row.insertCell().textContent = displayPhone;
+                // Coluna Valor
                 row.insertCell().textContent = formatCurrency(fatura.valor || 0);
+                // Coluna Vencimento
                 row.insertCell().textContent = formatDate(fatura.vencimento);
                 
+                // Coluna Status
                 const statusCell = row.insertCell();
-                statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
+                statusCell.classList.add('table-cell-compact'); // Compactação de célula
+                statusCell.innerHTML = `<span class="px-1 py-0.5 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`; // Badge compactado
 
                 const actionCell = row.insertCell();
-                actionCell.classList.add('flex', 'items-center', 'space-x-2');
+                actionCell.classList.add('flex', 'items-center', 'space-x-1', 'py-2', 'px-1'); // Reduzido o padding e espaçamento
 
+                // Select de Status
                 const select = document.createElement('select');
-                select.className = 'p-2 border border-gray-700 bg-gray-700 text-gray-100 rounded-md text-sm cursor-pointer transition duration-150'; 
+                select.className = 'p-1 border border-gray-700 bg-gray-700 text-gray-100 rounded-md text-xs cursor-pointer transition duration-150'; // Compactado
                 select.title = 'Mudar Status';
                 
                 const options = ['A receber', 'Pago']; 
@@ -871,7 +890,7 @@
                     const generateBtn = document.createElement('button');
                     generateBtn.textContent = '➕';
                     generateBtn.title = 'Gerar Próxima Fatura';
-                    generateBtn.className = 'p-2 text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150';
+                    generateBtn.className = 'p-1 text-xs text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150'; // Compactado
                     generateBtn.onclick = () => generateNextFatura(fatura.clienteId, fatura.valor, fatura.vencimento);
                     actionCell.appendChild(generateBtn);
                 }
@@ -879,9 +898,17 @@
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = `Excluir Fatura`;
-                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.className = 'p-1 text-xs text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150'; // Compactado
                 deleteBtn.onclick = () => deleteFatura(fatura.id);
                 actionCell.appendChild(deleteBtn);
+            });
+            // Aplicar estilos compactos nas células do HTML
+            Array.from(tableBody.rows).forEach(row => {
+                Array.from(row.cells).forEach((cell, index) => {
+                    if (index < 4) { // Nome, Telefone, Valor, Vencimento
+                         cell.classList.add('py-2', 'px-2', 'table-cell-compact');
+                    }
+                });
             });
         };
 
@@ -1007,12 +1034,22 @@
                 row.insertCell().textContent = formatCurrency(despesa.valor);
 
                 const actionCell = row.insertCell();
+                actionCell.classList.add('py-2', 'px-1'); // Compactado
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = `Excluir Despesa`;
-                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.className = 'p-1 text-xs text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150'; // Compactado
                 deleteBtn.onclick = () => deleteDespesa(despesa.id);
                 actionCell.appendChild(deleteBtn);
+            });
+
+            // Aplicar estilos compactos nas células do HTML
+            Array.from(tableBody.rows).forEach(row => {
+                Array.from(row.cells).forEach((cell, index) => {
+                    if (index < 4) { // Data, Descrição, Categoria, Valor
+                         cell.classList.add('py-2', 'px-2', 'table-cell-compact');
+                    }
+                });
             });
         }
         
@@ -1097,12 +1134,22 @@
                 row.insertCell().textContent = formatCurrency(avulso.valor);
 
                 const actionCell = row.insertCell();
+                actionCell.classList.add('py-2', 'px-1'); // Compactado
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = `Excluir Serviço Avulso`;
-                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.className = 'p-1 text-xs text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150'; // Compactado
                 deleteBtn.onclick = () => deleteAvulso(avulso.id);
                 actionCell.appendChild(deleteBtn);
+            });
+
+            // Aplicar estilos compactos nas células do HTML
+            Array.from(tableBody.rows).forEach(row => {
+                Array.from(row.cells).forEach((cell, index) => {
+                    if (index < 4) { // Data, Tipo, Cliente/Detalhes, Valor
+                         cell.classList.add('py-2', 'px-2', 'table-cell-compact');
+                    }
+                });
             });
         }
 
@@ -1285,26 +1332,26 @@
                 <h2 class="text-3xl font-bold text-gray-100">Dashboard Financeiro</h2>
 
                 <!-- Cartões de Resumo Financeiro -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <!-- Total Recebido -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                    <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total Recebido (💰)</p>
-                        <p id="total-recebido" class="text-2xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
+                        <p id="total-recebido" class="text-xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total a Receber -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                    <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total a Receber (📅)</p>
-                        <p id="total-a-receber" class="text-2xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
+                        <p id="total-a-receber" class="text-xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total em Atraso -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                    <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total em Atraso (⚠️)</p>
-                        <p id="total-atrasado" class="text-2xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
+                        <p id="total-atrasado" class="text-xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
                     <!-- Total em Despesas -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-gray-500 transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                    <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-gray-500 transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total em Despesas (💸)</p>
-                        <p id="total-despesas-dashboard" class="text-2xl font-extrabold text-gray-400 mt-1">R$ 0,00</p>
+                        <p id="total-despesas-dashboard" class="text-xl font-extrabold text-gray-400 mt-1">R$ 0,00</p>
                     </div>
                 </div>
 
@@ -1318,7 +1365,7 @@
                 </div>
 
                 <!-- Gráfico Chart.js -->
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Status Financeiro (Cobranças)</h3>
                     <div class="h-80 w-full">
                         <canvas id="financeChart"></canvas>
@@ -1332,7 +1379,7 @@
                 
                 <div id="client-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Novo Cadastro</h3>
                     <form id="client-form" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1416,15 +1463,15 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nome</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Serviços</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Contrato</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nome</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Serviços</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Contrato</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="clientes-table-body" class="divide-y divide-gray-700 text-gray-100">
+                        <tbody id="clientes-table-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
                             <tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado.</td></tr>
                         </tbody>
                     </table>
@@ -1446,7 +1493,7 @@
                 <div id="faturas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
                 <!-- Formulário de Fatura Manual -->
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Fatura Manualmente</h3>
                     <form id="manual-fatura-form" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1489,15 +1536,15 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vencimento</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vencimento</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="faturas-table-body" class="divide-y divide-gray-700 text-gray-100">
+                        <tbody id="faturas-table-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
                             <tr><td colspan="6" class="p-4 text-center text-gray-500">Carregando faturas...</td></tr>
                         </tbody>
                     </table>
@@ -1513,14 +1560,14 @@
                 <!-- Resumo de Despesas (Card Único) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <!-- Total de Despesas -->
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                    <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
                         <p class="text-sm font-medium text-gray-300">Total de Despesas (💸)</p>
-                        <p id="total-despesas-summary" class="text-2xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
+                        <p id="total-despesas-summary" class="text-xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
                 </div>
 
                 <!-- Formulário de Nova Despesa -->
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Nova Despesa</h3>
                     <form id="expense-form" class="space-y-4"> 
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1565,14 +1612,14 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoria</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoria</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="despesas-table-body" class="divide-y divide-gray-700 text-gray-100">
+                        <tbody id="despesas-table-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
                             <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>
                         </tbody>
                     </table>
@@ -1586,7 +1633,7 @@
                 <div id="avulsos-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
                 <!-- Formulário de Novo Serviço Avulso -->
-                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-8 transition duration-300">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Serviço Avulso Concluído</h3>
                     <form id="avulso-form" class="space-y-4"> 
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1631,14 +1678,14 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tipo de Serviço</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente / Detalhes</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Recebido</th>
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tipo de Serviço</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente / Detalhes</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Recebido</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="avulsos-table-body" class="divide-y divide-gray-700 text-gray-100">
+                        <tbody id="avulsos-table-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
                             <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado.</td></tr>
                         </tbody>
                     </table>
