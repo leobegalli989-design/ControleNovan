@@ -16,6 +16,31 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* --- ANIMAÇÃO DA LOGO --- */
+        .logo-circle {
+            transition: all 0.3s ease-in-out;
+            /* Sombra mais visível e animada */
+            box-shadow: 0 0 15px rgba(122, 82, 247, 0.8); 
+            /* Animação para efeito de pulsação suave */
+            animation: logo-breath 2s infinite alternate ease-in-out;
+        }
+        @keyframes logo-breath {
+            from {
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(122, 82, 247, 0.5);
+            }
+            to {
+                transform: scale(1.05);
+                box-shadow: 0 0 25px rgba(122, 82, 247, 1);
+            }
+        }
+        /* -------------------------- */
+        /* Estilo para simular o dropdown de serviços */
+        .custom-select-dropdown {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #4b5563; /* gray-600 */
+        }
     </style>
     <script>
         tailwind.config = {
@@ -57,10 +82,9 @@
         setLogLevel('debug');
 
         // --- ENVIRONMENT VARIABLES (OBRIGATÓRIO) ---
-        // Estas variáveis agora lerão os valores definidos globalmente acima.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-novan-app';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
 
         let app;
         if (firebaseConfig) {
@@ -69,7 +93,6 @@
             window.auth = getAuth(app);
         } else {
             console.error("ERRO CRÍTICO: Configuração do Firebase não está disponível.");
-            // Impedir a inicialização do app se a config não estiver presente
             document.addEventListener('DOMContentLoaded', () => {
                 const messageEl = document.getElementById('auth-message');
                 if (messageEl) {
@@ -85,13 +108,21 @@
         let allClientesArray = []; 
         let allFaturas = [];
         let allDespesas = [];
+        let allServicosAvulsos = []; 
         let currentFaturaFilter = 'all'; 
         let currentClientFilter = 'all'; 
         let myChart = null;
+        
+        // Lista de serviços recorrentes
+        const RECURRING_SERVICES = [
+            "Tráfego Pago Meta", 
+            "Tráfego Pago Google", 
+            "Social Media", 
+            "Produção e Criação de Conteúdo"
+        ];
 
         // --- UTILITY FUNCTIONS ---
         
-        // Função para obter o caminho da coleção para o usuário logado (PRIVADO)
         window.getCollectionPath = (collectionName) => {
             if (!window.userId) {
                 console.error("ERRO: userId não definido para acessar o Firestore.");
@@ -106,19 +137,47 @@
 
         const formatDate = (date) => {
             if (!date) return 'N/A';
-            if (date.toDate) date = date.toDate(); // Converte Firebase Timestamp para Date
+            if (date.toDate) date = date.toDate(); 
             return date.toLocaleDateString('pt-BR');
         };
 
         const createSafeDate = (dateString) => {
             if (!dateString) return new Date();
             const [year, month, day] = dateString.split('-').map(Number);
-            // Cria a data ao meio-dia para evitar problemas de fuso horário
             return new Date(year, month - 1, day, 12, 0, 0); 
         };
+        
+        const formatPhone = (input) => {
+            let value = input.value.replace(/\D/g, '');
+            let formatted = '';
+
+            if (value.length > 0) {
+                formatted += '(' + value.substring(0, 2);
+            }
+            if (value.length > 2) {
+                if (value.length > 6 && value.length <= 11) {
+                    formatted += ') ' + value.substring(2, 7);
+                    formatted += '-' + value.substring(7, 11);
+                } else if (value.length > 2) {
+                    formatted += ') ' + value.substring(2, 6);
+                }
+            }
+            if (value.length > 6 && value.length <= 10) {
+                 formatted += '-' + value.substring(6, 10);
+            }
+             if (value.length > 10) {
+                 formatted = value.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+             } else if (value.length > 6) {
+                 formatted = value.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+             }
+            
+            input.value = formatted;
+        };
+        window.formatPhone = formatPhone;
+
 
         const showActionMessage = (message, isSuccess = true) => {
-            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message') || document.getElementById('despesas-message');
+            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message') || document.getElementById('despesas-message') || document.getElementById('avulsos-message');
             
             if (!messageEl) return;
             
@@ -154,7 +213,7 @@
                 statusColor = 'bg-novan-yellow';
                 statusText = '⏳ A receber';
                 status = 'A receber';
-            } else if (status === 'Atrasado') { // Handle pre-existing 'Atrasado' status
+            } else if (status === 'Atrasado') { 
                  statusColor = 'bg-novan-red';
                  statusText = '⚠️ Atrasado';
             } else {
@@ -166,6 +225,32 @@
 
             return { status, statusText, statusColor };
         };
+
+        // --- CUSTOM DROPDOWN LOGIC ---
+        
+        window.toggleServicosDropdown = () => {
+            const dropdown = document.getElementById('servicos-dropdown');
+            dropdown.classList.toggle('hidden');
+            // Gira o ícone da seta
+            const icon = document.getElementById('servicos-icon');
+            icon.classList.toggle('rotate-180');
+        };
+
+        window.updateServicosToggleText = () => {
+            const checkboxes = document.querySelectorAll('#servicos-dropdown input[type="checkbox"]');
+            const toggleTextEl = document.getElementById('servicos-toggle-text');
+            const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+            if (selectedCount === 0) {
+                toggleTextEl.textContent = "Nenhum serviço selecionado";
+            } else if (selectedCount === 1) {
+                const selectedService = Array.from(checkboxes).find(cb => cb.checked).value;
+                toggleTextEl.textContent = selectedService;
+            } else {
+                toggleTextEl.textContent = `${selectedCount} serviços selecionados`;
+            }
+        };
+
 
         // --- NAVIGATION & UI ---
         
@@ -195,6 +280,8 @@
                 setFaturaFilter('all');
             } else if (view === 'clientes') {
                 setClientFilter('all');
+            } else if (view === 'servicos-avulsos') {
+                renderServicosAvulsosTable(allServicosAvulsos);
             }
         };
 
@@ -210,7 +297,7 @@
             let totalAtrasado = 0;
             let totalDespesas = 0;
 
-            // Faturas
+            // 1. Faturas
             allFaturas.forEach(fatura => {
                 const { status } = getStatusDetails(fatura.status, fatura.vencimento);
                 const valor = parseFloat(fatura.valor);
@@ -226,27 +313,54 @@
                 }
             });
 
-            // Despesas
+            // 2. Despesas
             allDespesas.forEach(despesa => {
                 const valor = parseFloat(despesa.valor);
                 if (isNaN(valor)) return; 
                 totalDespesas += valor;
             });
             
-            const totalLucro = totalRecebido - totalDespesas;
+            // 3. Serviços Avulsos (Tratado como Receita Recebida)
+             allServicosAvulsos.forEach(avulso => {
+                const valor = parseFloat(avulso.valor);
+                if (isNaN(valor)) return; 
+                totalRecebido += valor; 
+            });
 
+            const totalLucro = totalRecebido - totalDespesas;
+            const lucroEl = document.getElementById('total-lucro');
+            const lucroCard = document.getElementById('lucro-card');
+
+            // Determine colors - LÓGICA REVISADA: Lucro Positivo (Verde), Lucro Negativo (Vermelho), Lucro Zero (Neutro/Cinza). Removida cor Roxo/Purple.
+            let lucroBorderColor = 'border-gray-500'; 
+            let lucroTextColor = 'text-gray-400';    
+
+            if (totalLucro > 0) {
+                lucroBorderColor = 'border-novan-green';
+                lucroTextColor = 'text-novan-green';
+            } else if (totalLucro < 0) {
+                lucroBorderColor = 'border-novan-red';
+                lucroTextColor = 'text-novan-red';
+            } else {
+                 // Lucro zero (totalLucro === 0)
+                 lucroBorderColor = 'border-gray-500'; 
+                 lucroTextColor = 'text-gray-400';
+            }
+            
             // Update summary cards
             document.getElementById('total-recebido').textContent = formatCurrency(totalRecebido);
             document.getElementById('total-a-receber').textContent = formatCurrency(totalAReceber);
             document.getElementById('total-atrasado').textContent = formatCurrency(totalAtrasado);
             document.getElementById('total-despesas-dashboard').textContent = formatCurrency(totalDespesas); 
             
-            // Update Lucro Card
-            document.getElementById('total-lucro').textContent = formatCurrency(totalLucro); 
-            const lucroCard = document.getElementById('lucro-card');
-            const lucroColor = totalLucro >= 0 ? 'border-novan-green' : 'border-novan-red';
-            lucroCard.classList.remove('border-novan-green', 'border-novan-red');
-            lucroCard.classList.add(lucroColor);
+            // Update Lucro Card Border
+            lucroCard.classList.remove('border-novan-green', 'border-novan-red', 'border-novan-purple', 'border-gray-500');
+            lucroCard.classList.add(lucroBorderColor);
+            
+            // Update Lucro Text Color and Content
+            lucroEl.textContent = formatCurrency(totalLucro); 
+            lucroEl.classList.remove('text-novan-green', 'text-novan-red', 'text-novan-purple', 'text-gray-400');
+            lucroEl.classList.add(lucroTextColor);
             
             // Overdue alert
             const overdueAlert = document.getElementById('overdue-alert');
@@ -285,11 +399,12 @@
             renderFaturasTable(allFaturas);
             renderClientesTable(allClientesArray);
             renderDespesasTable(allDespesas);
+            renderServicosAvulsosTable(allServicosAvulsos); 
         };
 
         // --- AUTHENTICATION ---
         
-        window.handleAuth = async (type) => {
+        window.handleAuth = async (type) => { 
             if (!window.auth) return;
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
@@ -304,6 +419,7 @@
 
             try {
                 if (type === 'register') {
+                    // Lógica de registro mantida caso o usuário queira reativar essa funcionalidade
                     await createUserWithEmailAndPassword(window.auth, email, password);
                     messageEl.textContent = 'Registro bem-sucedido! Entrando...';
                     messageEl.classList.remove('hidden');
@@ -327,25 +443,50 @@
 
         // --- FIREBASE LISTENERS ---
         
+        const populateClientDropdowns = () => {
+            const selectEl = document.getElementById('faturaClienteId');
+            if (!selectEl) return;
+            
+            const defaultOption = selectEl.querySelector('option[disabled]');
+            selectEl.innerHTML = '';
+            if (defaultOption) {
+                selectEl.appendChild(defaultOption);
+            } else {
+                const newDefaultOption = document.createElement('option');
+                newDefaultOption.value = "";
+                newDefaultOption.disabled = true;
+                newDefaultOption.selected = true;
+                newDefaultOption.textContent = "Selecione um Cliente";
+                selectEl.appendChild(newDefaultOption);
+            }
+
+            allClientesArray.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = `${client.nome} (${formatCurrency(client.valorContrato || 0)})`;
+                selectEl.appendChild(option);
+            });
+        };
+        
         const setupFirestoreListeners = () => {
             if (!window.db || !window.userId) return;
 
             const clientesPath = getCollectionPath('clientes');
             const faturasPath = getCollectionPath('faturas');
             const despesasPath = getCollectionPath('despesas');
+            const avulsosPath = getCollectionPath('servicos_avulsos'); 
 
-            if (!clientesPath || !faturasPath || !despesasPath) return;
+            if (!clientesPath || !faturasPath || !despesasPath || !avulsosPath) return;
 
-            // Listener de Clientes
             onSnapshot(collection(window.db, clientesPath), (snapshot) => {
                 allClientesArray = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[CLIENTES LISTENER] Clientes atualizados:", allClientesArray.length);
+                populateClientDropdowns(); 
                 calculateDashboardTotals();
             }, (error) => {
                 console.error("Erro ao ouvir clientes (Verifique as Regras de Segurança):", error);
             });
 
-            // Listener de Faturas
             onSnapshot(collection(window.db, faturasPath), (snapshot) => {
                 allFaturas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[FATURAS LISTENER] Faturas atualizadas:", allFaturas.length);
@@ -354,13 +495,20 @@
                 console.error("Erro ao ouvir faturas (Verifique as Regras de Segurança):", error);
             });
 
-            // Listener de Despesas
             onSnapshot(collection(window.db, despesasPath), (snapshot) => {
                 allDespesas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log("[DESPESAS LISTENER] Despesas atualizadas:", allDespesas.length);
                 calculateDashboardTotals();
             }, (error) => {
                 console.error("Erro ao ouvir despesas (Verifique as Regras de Segurança):", error);
+            });
+            
+            onSnapshot(collection(window.db, avulsosPath), (snapshot) => {
+                allServicosAvulsos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("[AVULSOS LISTENER] Serviços Avulsos atualizados:", allServicosAvulsos.length);
+                calculateDashboardTotals();
+            }, (error) => {
+                console.error("Erro ao ouvir serviços avulsos (Verifique as Regras de Segurança):", error);
             });
         };
 
@@ -374,18 +522,28 @@
             }
             const form = event.target;
             const nome = form.nome.value;
-            const telefone = form.telefone.value;
+            const telefone = form.telefone.value.replace(/\D/g, ''); 
+            
+            // NOVO: Coleta os serviços a partir dos checkboxes
+            const servicosContratados = Array.from(document.querySelectorAll('#servicos-dropdown input[type="checkbox"]:checked'))
+                                            .map(cb => cb.value);
+
             const valorContrato = parseFloat(form.valorContrato.value);
             const dataEntrada = createSafeDate(form.dataEntrada.value); 
             
-            if (!nome || !telefone || isNaN(valorContrato) || valorContrato <= 0 || isNaN(dataEntrada.getTime())) {
-                showActionMessage('Preencha todos os campos corretamente, incluindo uma data válida.', false);
+            if (!nome || !telefone || isNaN(valorContrato) || valorContrato <= 0 || isNaN(dataEntrada.getTime()) || servicosContratados.length === 0) {
+                showActionMessage('Preencha todos os campos corretamente, incluindo uma data válida e selecionando pelo menos um serviço.', false);
+                console.error("Dados de entrada inválidos.");
                 return;
             }
+            
+            console.log(`[NOVO CLIENTE] Iniciando cadastro para ${nome}. Valor: ${valorContrato}. Serviços: ${servicosContratados.join(', ')}`);
+
 
             showActionMessage(`Processando cadastro e gerando faturas iniciais...`, 'processing');
 
             try {
+                // 1. Create Client
                 const clientesRef = collection(window.db, getCollectionPath('clientes'));
                 const newClientRef = await addDoc(clientesRef, {
                     nome,
@@ -393,38 +551,44 @@
                     valorContrato: valorContrato,
                     dataEntrada: dataEntrada, 
                     status: 'Ativo', 
+                    servicosContratados: servicosContratados,
                     createdAt: serverTimestamp()
                 });
                 const clienteId = newClientRef.id;
+                console.log(`[NOVO CLIENTE] Cliente criado com sucesso. ID: ${clienteId}`); 
 
-                // 2. Generate Initial Fatura (PAID) - Assumimos que a primeira fatura é paga na entrada
                 const faturasRef = collection(window.db, getCollectionPath('faturas'));
+                
+                // 2. Generate Initial Fatura (PAID)
                 await addDoc(faturasRef, {
-                    clienteId,
+                    clienteId: clienteId, 
                     valor: valorContrato,
                     vencimento: dataEntrada, 
                     status: 'Pago',
                     criadoEm: serverTimestamp()
                 });
 
-                // 3. Generate Next Fatura (A RECEBER) - Para o mês seguinte
-                const nextVencimento = new Date(dataEntrada);
+                // 3. Generate Next Fatura (A RECEBER)
+                const nextVencimento = new Date(dataEntrada.getTime()); 
                 nextVencimento.setMonth(nextVencimento.getMonth() + 1); 
                 
                 await addDoc(faturasRef, {
-                    clienteId,
+                    clienteId: clienteId, 
                     valor: valorContrato,
                     vencimento: nextVencimento,
                     status: 'A receber',
                     criadoEm: serverTimestamp()
                 });
-
+                
                 form.reset();
+                // Limpa os checkboxes e reseta o texto do toggle após o cadastro
+                document.querySelectorAll('#servicos-dropdown input[type="checkbox"]').forEach(cb => cb.checked = false);
+                updateServicosToggleText(); 
                 showActionMessage(`Cliente ${nome} e faturas criadas com sucesso!`, true);
 
             } catch (e) {
                 console.error("ERRO CRÍTICO ao adicionar cliente/fatura:", e);
-                showActionMessage(`ERRO: Falha no cadastro. Mensagem: ${e.message}`, false); 
+                showActionMessage(`ERRO FATAL: Falha no cadastro. Por favor, verifique as Regras de Segurança do Firestore. Mensagem: ${e.message}`, false); 
             }
         }
         window.handleNewClient = handleNewClient;
@@ -450,7 +614,7 @@
             }
             const faturasPath = getCollectionPath('faturas');
             try {
-                // 1. Delete all associated Faturas (Requires getting them first)
+                // 1. Delete all associated Faturas 
                 const faturasRef = collection(window.db, faturasPath);
                 const q = query(faturasRef, where("clienteId", "==", clientId));
                 
@@ -481,7 +645,7 @@
             }
 
             if (filteredClientes.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum cliente encontrado com o filtro atual.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhum cliente encontrado com o filtro atual.</td></tr>`;
                 return;
             }
 
@@ -489,15 +653,30 @@
                 const row = tableBody.insertRow();
                 row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
                 
+                // Coluna 1: Nome
                 row.insertCell().textContent = client.nome;
-                row.insertCell().textContent = client.telefone;
+                
+                // Coluna 2: Serviços Contratados (ATUALIZADO)
+                const servicesCell = row.insertCell();
+                const servicesHtml = (client.servicosContratados || [])
+                                    .map(s => `<span class="inline-block bg-novan-purple/30 text-white text-xs font-semibold mr-1 mb-1 px-2 py-0.5 rounded-full">${s.split(' ').slice(0, 2).join(' ')}</span>`)
+                                    .join('');
+                servicesCell.innerHTML = servicesHtml || '<span class="text-gray-500 text-xs">Nenhum</span>';
+                
+                // Coluna 3: Telefone
+                const displayPhone = client.telefone ? client.telefone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3') : client.telefone;
+                row.insertCell().textContent = displayPhone;
+                
+                // Coluna 4: Valor Contrato
                 row.insertCell().textContent = formatCurrency(client.valorContrato || 0);
                 
+                // Coluna 5: Status
                 const statusCell = row.insertCell();
                 const statusColor = client.status === 'Ativo' ? 'bg-novan-green' : 'bg-gray-500';
                 const statusText = client.status === 'Ativo' ? '✅ Ativo' : '❌ Inativo';
                 statusCell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full text-white ${statusColor}">${statusText}</span>`;
 
+                // Coluna 6: Ações
                 const actionCell = row.insertCell();
                 actionCell.classList.add('flex', 'items-center', 'space-x-2');
 
@@ -535,6 +714,44 @@
         };
         
         // --- FATURA MANAGEMENT (FIREBASE CRUD) ---
+        
+        async function handleNewFaturaManual(event) {
+            event.preventDefault();
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
+            const form = document.getElementById('manual-fatura-form');
+            const clienteId = form.clienteId.value;
+            const valor = parseFloat(form.valor.value);
+            const vencimento = createSafeDate(form.vencimento.value);
+            const status = form.status.value;
+
+            if (!clienteId || isNaN(valor) || valor <= 0 || isNaN(vencimento.getTime()) || !status) {
+                showActionMessage('Preencha todos os campos corretamente.', false);
+                return;
+            }
+
+            try {
+                const faturasRef = collection(window.db, getCollectionPath('faturas'));
+                
+                await addDoc(faturasRef, {
+                    clienteId: clienteId,
+                    valor: valor,
+                    vencimento: vencimento,
+                    status: status,
+                    criadoEm: serverTimestamp()
+                });
+
+                form.reset();
+                showActionMessage(`Fatura manual de ${formatCurrency(valor)} criada com sucesso.`, true);
+
+            } catch (e) {
+                console.error("ERRO ao adicionar fatura manual:", e);
+                showActionMessage(`ERRO: Falha ao registrar fatura. Mensagem: ${e.message}`, false);
+            }
+        }
+        window.handleNewFaturaManual = handleNewFaturaManual;
         
         window.deleteFatura = async (faturaId) => {
             if (!window.db || !window.userId) {
@@ -577,19 +794,16 @@
             }, {});
 
             let filteredFaturas = faturas;
-            // O filtro é feito pelo status CALCULADO (A receber, Pago, Atrasado), não pelo status literal do BD
             if (currentFaturaFilter !== 'all') {
-                filteredFaturas = faturas.filter(fatura => {
+                filteredFaturas = filteredFaturas.filter(fatura => {
                     const { status } = getStatusDetails(fatura.status, fatura.vencimento);
                     return status === currentFaturaFilter;
                 });
             }
             
-            // Sort by due date (vencimento)
             filteredFaturas.sort((a, b) => {
                 const dateA = a.vencimento && a.vencimento.toDate ? a.vencimento.toDate().getTime() : 0;
                 const dateB = b.vencimento && b.vencimento.toDate ? b.vencimento.toDate().getTime() : 0;
-                // Ordenar por data (mais antigas primeiro)
                 return dateA - dateB; 
             });
 
@@ -607,7 +821,8 @@
                 row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
                 
                 row.insertCell().textContent = client.nome;
-                row.insertCell().textContent = client.telefone;
+                const displayPhone = client.telefone ? client.telefone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3') : client.telefone;
+                row.insertCell().textContent = displayPhone;
                 row.insertCell().textContent = formatCurrency(fatura.valor || 0);
                 row.insertCell().textContent = formatDate(fatura.vencimento);
                 
@@ -617,7 +832,6 @@
                 const actionCell = row.insertCell();
                 actionCell.classList.add('flex', 'items-center', 'space-x-2');
 
-                // Update Status
                 const select = document.createElement('select');
                 select.className = 'p-2 border border-gray-700 bg-gray-700 text-gray-100 rounded-md text-sm cursor-pointer transition duration-150'; 
                 select.title = 'Mudar Status';
@@ -633,12 +847,10 @@
                     select.appendChild(option); 
                 });
                 
-                // Só permite alterar se não estiver 'Pago'
                 if (status === 'Pago') {
                     select.disabled = true;
                     select.title = 'Fatura paga não pode ser alterada.';
                 } else {
-                    // Pre-select current status (which might be 'A receber' even if it's 'Atrasado' in the logic)
                     if (fatura.status === 'A receber') select.querySelector(`option[value="A receber"]`).selected = true;
                     
                     select.addEventListener('change', (e) => updateFaturaStatus(fatura.id, e.target.value));
@@ -646,7 +858,6 @@
 
                 actionCell.appendChild(select);
 
-                // Ações (Gerar Nova Fatura) - Botão só aparece para faturas pagas (indicando o fim do ciclo de cobrança)
                 if(status === 'Pago') {
                     const generateBtn = document.createElement('button');
                     generateBtn.textContent = '➕';
@@ -656,7 +867,6 @@
                     actionCell.appendChild(generateBtn);
                 }
                 
-                // Ações (Excluir Fatura)
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = `Excluir Fatura`;
@@ -772,7 +982,6 @@
                 return;
             }
             
-            // Ordenar por data da despesa, mais recente primeiro
             despesas.sort((a, b) => {
                 const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
                 const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
@@ -797,6 +1006,96 @@
                 actionCell.appendChild(deleteBtn);
             });
         }
+        
+        // --- SERVIÇOS AVULSOS MANAGEMENT (FIREBASE CRUD) ---
+        
+        async function handleNewAvulso(event) {
+            event.preventDefault(); 
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
+            const form = document.getElementById('avulso-form');
+            const tipoServico = form.tipoServico.value;
+            const clienteAvulso = form.clienteAvulso.value;
+            const valor = parseFloat(form.valorAvulso.value);
+            const dataServico = createSafeDate(form.dataServico.value); 
+            
+            if (!tipoServico || !clienteAvulso || isNaN(valor) || valor <= 0 || isNaN(dataServico.getTime())) {
+                showActionMessage('Preencha todos os campos corretamente.', false);
+                return;
+            }
+
+            try {
+                const avulsosRef = collection(window.db, getCollectionPath('servicos_avulsos'));
+                await addDoc(avulsosRef, {
+                    tipoServico,    
+                    clienteAvulso,  
+                    valor,
+                    dataServico: dataServico,
+                    criadoEm: serverTimestamp()
+                });
+
+                form.reset();
+                showActionMessage(`Serviço avulso "${tipoServico} - ${clienteAvulso}" registrado como recebido!`, true);
+                renderServicosAvulsosTable(allServicosAvulsos);
+
+            } catch (e) {
+                console.error("Erro ao adicionar serviço avulso:", e);
+                showActionMessage(`Erro ao salvar serviço avulso: ${e.message}`, false);
+            }
+        }
+        window.handleNewAvulso = handleNewAvulso; 
+
+        async function deleteAvulso(avulsoId) {
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
+            try {
+                const docRef = doc(window.db, getCollectionPath('servicos_avulsos'), avulsoId);
+                await deleteDoc(docRef);
+                showActionMessage('Serviço avulso excluído com sucesso!');
+            } catch (e) {
+                showActionMessage(`Erro ao excluir serviço avulso: ${e.message}`, false);
+            }
+        }
+        window.deleteAvulso = deleteAvulso; 
+        
+        function renderServicosAvulsosTable(avulsos) {
+            const tableBody = document.getElementById('avulsos-table-body');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+            
+            if (avulsos.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado.</td></tr>`;
+                return;
+            }
+            
+            avulsos.sort((a, b) => {
+                const dateA = a.dataServico && a.dataServico.toDate ? a.dataServico.toDate().getTime() : 0;
+                const dateB = b.dataServico && b.dataServico.toDate ? b.dataServico.toDate().getTime() : 0;
+                return dateB - dateA;
+            });
+
+            avulsos.forEach(avulso => {
+                const row = tableBody.insertRow();
+                row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
+                
+                row.insertCell().textContent = formatDate(avulso.dataServico);
+                row.insertCell().textContent = avulso.tipoServico || 'N/A'; 
+                row.insertCell().textContent = avulso.clienteAvulso || 'N/A'; 
+                row.insertCell().textContent = formatCurrency(avulso.valor);
+
+                const actionCell = row.insertCell();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = `Excluir Serviço Avulso`;
+                deleteBtn.className = 'p-2 text-novan-red hover:text-white hover:bg-novan-red rounded-full transition duration-150';
+                deleteBtn.onclick = () => deleteAvulso(avulso.id);
+                actionCell.appendChild(deleteBtn);
+            });
+        }
 
 
         // --- APPLICATION INITIALIZATION ---
@@ -804,25 +1103,14 @@
         async function initApp() {
             if (!window.auth) return;
 
-            // 1. Set Persistence (Always good practice)
+            // 1. Set Persistence
             try {
                 await setPersistence(window.auth, browserLocalPersistence);
             } catch (e) {
                 console.warn("Falha ao definir persistência de autenticação.", e);
             }
-
-            // 2. Attempt Canvas Custom Token Sign In (Highest Priority)
-            if (initialAuthToken) {
-                try {
-                    await signInWithCustomToken(window.auth, initialAuthToken);
-                    // onAuthStateChanged will handle UI update
-                } catch (e) {
-                    console.error("Falha na autenticação do Canvas com token customizado. Queda para onAuthStateChanged.", e);
-                    // Fall through to onAuthStateChanged, which will detect no user and show auth screen
-                }
-            }
             
-            // 3. Fallback to onAuthStateChanged listener which manages UI visibility
+            // 2. Setup Auth State Listener (handles UI toggle once a user is found/logged)
             onAuthStateChanged(window.auth, (user) => {
                 if (user) {
                     // Usuário logado
@@ -847,10 +1135,19 @@
 
         document.addEventListener('DOMContentLoaded', () => {
              if (firebaseConfig) {
+                 // Inicializa o texto do dropdown de serviços
+                 updateServicosToggleText(); 
                  // Inicializa event listeners de formulário (apenas uma vez)
                  document.getElementById('client-form').addEventListener('submit', handleNewClient);
                  document.getElementById('expense-form').addEventListener('submit', handleNewExpense);
+                 document.getElementById('manual-fatura-form').addEventListener('submit', handleNewFaturaManual); 
+                 document.getElementById('avulso-form').addEventListener('submit', handleNewAvulso); 
                  initApp();
+                 
+                 // Adiciona listeners para atualizar o texto do dropdown de serviços
+                 document.querySelectorAll('#servicos-dropdown input[type="checkbox"]').forEach(checkbox => {
+                     checkbox.addEventListener('change', updateServicosToggleText);
+                 });
              }
         });
 
@@ -862,8 +1159,10 @@
     <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-2xl"> 
             <div class="flex flex-col items-center mb-8">
-                <div class="h-12 w-12 bg-novan-purple rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4">N</div>
-                <h1 class="text-3xl font-bold text-gray-100">Login Novan Billing</h1>
+                <!-- LOGO ANIMADA COM EFEITO logo-circle -->
+                <div class="h-12 w-12 bg-novan-purple rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4 logo-circle">N</div>
+                <!-- TÍTULO SIMPLIFICADO -->
+                <h1 class="text-3xl font-bold text-gray-100">Novan Agency</h1>
                 <p class="text-gray-400">Acesso exclusivo para administradores.</p>
             </div>
             
@@ -882,9 +1181,6 @@
                 <button onclick="handleAuth('login')" class="w-full py-3 px-4 bg-novan-purple text-white font-semibold rounded-lg shadow-lg hover:bg-opacity-90 transition duration-200">
                     Entrar
                 </button>
-                <button onclick="handleAuth('register')" class="w-full py-3 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
-                    Registrar (Primeiro Acesso)
-                </button>
             </div>
         </div>
     </div>
@@ -898,7 +1194,9 @@
             <div class="p-6 flex flex-col h-full">
                 <!-- Logo da Novan -->
                 <div class="flex items-center space-x-2 mb-8">
-                    <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
+                    <!-- LOGO ANIMADA COM EFEITO logo-circle -->
+                    <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold logo-circle">N</div>
+                    <!-- TÍTULO SIMPLIFICADO -->
                     <span class="text-xl font-extrabold text-white">Novan Agency</span>
                 </div>
                 
@@ -922,6 +1220,10 @@
                     <button id="menu-despesas" onclick="navigateTo('despesas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
                         <span class="mr-3">💸</span> Despesas
                     </button>
+                     <!-- NOVO BOTÃO DE SERVIÇOS AVULSOS -->
+                    <button id="menu-servicos-avulsos" onclick="navigateTo('servicos-avulsos')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
+                        <span class="mr-3">⭐</span> Serviços Avulsos
+                    </button>
                 </nav>
                 
                 <!-- Botão Sair -->
@@ -939,7 +1241,9 @@
             <!-- Header Fixo (para mobile) e Toggle -->
             <header class="md:hidden sticky top-0 bg-gray-800 shadow-xl p-4 flex justify-between items-center z-30 mb-4 rounded-xl">
                     <div class="flex items-center space-x-2">
-                        <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold">N</div>
+                        <!-- LOGO ANIMADA COM EFEITO logo-circle -->
+                        <div class="h-8 w-8 bg-novan-purple rounded-full flex items-center justify-center text-white text-xl font-bold logo-circle">N</div>
+                        <!-- TÍTULO SIMPLIFICADO -->
                         <span class="text-xl font-extrabold text-white">Novan Agency</span>
                     </div>
                     <button onclick="toggleMobileMenu()" class="text-white p-2 rounded-lg hover:bg-gray-700 transition duration-150">
@@ -951,6 +1255,8 @@
                         <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">👤 Clientes</button>
                         <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🧾 Faturas</button>
                         <button onclick="navigateTo('despesas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">💸 Despesas</button>
+                        <!-- NOVO BOTÃO MOBILE -->
+                        <button onclick="navigateTo('servicos-avulsos')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">⭐ Serviços Avulsos</button>
                         <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">🚪 Sair</button>
                     </nav>
             </header>
@@ -991,8 +1297,9 @@
                 <!-- Cartão de Lucro Líquido (Destaque) -->
                 <div class="grid grid-cols-1">
                     <div id="lucro-card" class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-purple transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
-                        <p class="text-lg font-medium text-gray-300">Lucro Líquido (Recebido - Despesas)</p>
-                        <p id="total-lucro" class="text-3xl font-extrabold text-novan-purple mt-2">R$ 0,00</p>
+                        <p class="text-lg font-medium text-gray-300">Lucro Líquido</p>
+                        <!-- A classe de cor do texto é removida e adicionada dinamicamente pelo JS -->
+                        <p id="total-lucro" class="text-3xl font-extrabold mt-2 text-novan-purple">R$ 0,00</p>
                     </div>
                 </div>
 
@@ -1023,8 +1330,45 @@
                             <!-- Telefone (WhatsApp) -->
                             <div>
                                 <label for="telefone" class="block text-sm font-medium text-gray-300">Telefone (WhatsApp)</label>
-                                <input type="tel" id="telefone" name="telefone" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="tel" id="telefone" name="telefone" oninput="formatPhone(this)" maxlength="15" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
+                            
+                            <!-- NOVO CAMPO: Serviços Contratados (Custom Dropdown) -->
+                            <div class="md:col-span-2 relative">
+                                <label for="servicosContratados" class="block text-sm font-medium text-gray-300">Serviço(s) Contratado(s) - Recorrente</label>
+                                
+                                <!-- Toggle Button -->
+                                <button type="button" onclick="toggleServicosDropdown()" id="servicos-toggle" class="mt-1 flex justify-between items-center w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150 hover:bg-gray-600">
+                                    <span id="servicos-toggle-text">Nenhum serviço selecionado</span>
+                                    <svg id="servicos-icon" class="w-4 h-4 text-gray-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                
+                                <!-- Dropdown Content with Checkboxes -->
+                                <div id="servicos-dropdown" class="hidden absolute z-10 w-full mt-1 bg-gray-800 rounded-lg shadow-xl custom-select-dropdown">
+                                    <div class="p-2 space-y-1">
+                                        <!-- Checkboxes gerados por JS ou estáticos (aqui estáticos para simplicidade) -->
+                                        <label class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-700 cursor-pointer">
+                                            <span>Tráfego Pago Meta</span>
+                                            <input type="checkbox" name="servicosContratados" value="Tráfego Pago Meta" class="form-checkbox text-novan-purple bg-gray-600 border-gray-500 rounded focus:ring-novan-purple">
+                                        </label>
+                                        <label class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-700 cursor-pointer">
+                                            <span>Tráfego Pago Google</span>
+                                            <input type="checkbox" name="servicosContratados" value="Tráfego Pago Google" class="form-checkbox text-novan-purple bg-gray-600 border-gray-500 rounded focus:ring-novan-purple">
+                                        </label>
+                                        <label class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-700 cursor-pointer">
+                                            <span>Social Media</span>
+                                            <input type="checkbox" name="servicosContratados" value="Social Media" class="form-checkbox text-novan-purple bg-gray-600 border-gray-500 rounded focus:ring-novan-purple">
+                                        </label>
+                                        <label class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-700 cursor-pointer">
+                                            <span>Produção e Criação de Conteúdo</span>
+                                            <input type="checkbox" name="servicosContratados" value="Produção e Criação de Conteúdo" class="form-checkbox text-novan-purple bg-gray-600 border-gray-500 rounded focus:ring-novan-purple">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- Valor do Contrato (R$) -->
                             <div>
                                 <label for="valorContrato" class="block text-sm font-medium text-gray-300">Valor do Contrato (R$)</label>
@@ -1059,6 +1403,7 @@
                         <thead class="bg-gray-700">
                             <tr>
                                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nome</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Serviços</th>
                                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Telefone</th>
                                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Contrato</th>
                                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
@@ -1066,7 +1411,7 @@
                             </tr>
                         </thead>
                         <tbody id="clientes-table-body" class="divide-y divide-gray-700 text-gray-100">
-                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado.</td></tr>
+                            <tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1085,6 +1430,45 @@
                 </div>
                 
                 <div id="faturas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
+
+                <!-- Formulário de Fatura Manual -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Fatura Manualmente</h3>
+                    <form id="manual-fatura-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Cliente -->
+                            <div>
+                                <label for="faturaClienteId" class="block text-sm font-medium text-gray-300">Cliente</label>
+                                <select id="faturaClienteId" name="clienteId" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                    <option value="" disabled selected>Selecione um Cliente</option>
+                                    <!-- Opções populadas por JS -->
+                                </select>
+                            </div>
+                            <!-- Valor -->
+                            <div>
+                                <label for="faturaValor" class="block text-sm font-medium text-gray-300">Valor (R$)</label>
+                                <input type="number" step="0.01" id="faturaValor" name="valor" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Vencimento -->
+                            <div>
+                                <label for="faturaVencimento" class="block text-sm font-medium text-gray-300">Data de Vencimento</label>
+                                <input type="date" id="faturaVencimento" name="vencimento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Status -->
+                            <div>
+                                <label for="faturaStatus" class="block text-sm font-medium text-gray-300">Status Inicial</label>
+                                <select id="faturaStatus" name="status" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                    <option value="A receber" selected>A receber</option>
+                                    <option value="Pago">Pago</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 px-4 bg-novan-yellow text-gray-900 font-semibold rounded-lg shadow-md hover:bg-opacity-90 transition duration-200">
+                            Registrar Nova Fatura
+                        </button>
+                    </form>
+                </div>
 
                 <!-- Tabela de Faturas -->
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
@@ -1176,6 +1560,72 @@
                         </thead>
                         <tbody id="despesas-table-body" class="divide-y divide-gray-700 text-gray-100">
                             <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- ---------------------- VIEW: SERVIÇOS AVULSOS ---------------------- -->
+            <div id="view-servicos-avulsos" class="app-view hidden space-y-8">
+                <h2 class="text-3xl font-bold text-gray-100">Serviços Avulsos (Receita Não Recorrente)</h2>
+                
+                <div id="avulsos-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
+
+                <!-- Formulário de Novo Serviço Avulso -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-100">Registrar Serviço Avulso Concluído</h3>
+                    <form id="avulso-form" class="space-y-4"> 
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Tipo de Serviço (Dropdown) -->
+                            <div>
+                                <label for="tipoServico" class="block text-sm font-medium text-gray-300">Tipo de Serviço</label>
+                                <select id="tipoServico" name="tipoServico" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                    <option value="" disabled selected>Selecione</option>
+                                    <option value="Edição de Vídeos">Edição de Vídeos</option>
+                                    <option value="Criação de Sites">Criação de Sites</option>
+                                    <option value="Criação de Conteúdo">Criação de Conteúdo</option>
+                                    <option value="Google Meu Negócio">Google Meu Negócio</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                             <!-- Cliente / Detalhes (Text Input) -->
+                            <div>
+                                <label for="clienteAvulso" class="block text-sm font-medium text-gray-300">Cliente / Detalhes</label>
+                                <input type="text" id="clienteAvulso" name="clienteAvulso" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Valor (R$) -->
+                            <div>
+                                <label for="valorAvulso" class="block text-sm font-medium text-gray-300">Valor Recebido (R$)</label>
+                                <input type="number" step="0.01" id="valorAvulso" name="valorAvulso" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-green focus:border-novan-green bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Data do Serviço/Pagamento -->
+                            <div>
+                                <label for="dataServico" class="block text-sm font-medium text-gray-300">Data do Serviço/Pagamento</label>
+                                <input type="date" id="dataServico" name="dataServico" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 px-4 bg-novan-green text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 transition duration-200">
+                            Registrar Receita Avulsa
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Tabela de Serviços Avulsos -->
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Receitas Avulsas</h3>
+                <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tipo de Serviço</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente / Detalhes</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Recebido</th>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="avulsos-table-body" class="divide-y divide-gray-700 text-gray-100">
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
