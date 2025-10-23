@@ -47,6 +47,11 @@
             padding-right: 0.5rem; /* px-2 */
             font-size: 0.75rem; /* text-xs */
         }
+        /* Input compacto para mobile */
+        .input-compact {
+             padding-top: 0.375rem; /* py-1.5 */
+             padding-bottom: 0.375rem; /* py-1.5 */
+        }
     </style>
     <script>
         tailwind.config = {
@@ -1656,11 +1661,11 @@
             <div class="space-y-4">
                 <div>
                     <label for="auth-email" class="block text-sm font-medium text-gray-300">E-mail</label>
-                    <input type="email" id="auth-email" class="mt-1 block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
+                    <input type="email" id="auth-email" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
                 </div>
                 <div>
                     <label for="auth-password" class="block text-sm font-medium text-gray-300">Senha</label>
-                    <input type="password" id="auth-password" class="mt-1 block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
+                    <input type="password" id="auth-password" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg shadow-sm focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white" required>
                 </div>
                 
                 <!-- NOVO: Checkbox Lembrar-me -->
@@ -1779,15 +1784,15 @@
                 <!-- NOVO: FILTRO POR MÊS E DIA -->
                 <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
                      <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
-                    <!-- ALTERADO: grid-cols-1 em mobile para forçar empilhamento -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                    <!-- CORREÇÃO MOBILE: grid-cols-1 em mobile, grid-cols-3 em desktop -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
                             <label for="filter-start-date" class="block text-sm font-medium text-gray-300">Data Inicial</label>
-                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
                         </div>
                         <div>
                             <label for="filter-end-date" class="block text-sm font-medium text-gray-300">Data Final</label>
-                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
                         </div>
                         <button id="clear-date-filter-btn" class="w-full py-2 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
                              Limpar Filtro
@@ -1851,15 +1856,15 @@
                 <!-- FILTRO POR MÊS E DIA -->
                 <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
                      <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
-                     <!-- ALTERADO: grid-cols-1 em mobile para forçar empilhamento -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                     <!-- CORREÇÃO MOBILE: grid-cols-1 em mobile, grid-cols-3 em desktop -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
                             <label for="filter-start-date" class="block text-sm font-medium text-gray-300">Data Inicial</label>
-                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
                         </div>
                         <div>
                             <label for="filter-end-date" class="block text-sm font-medium text-gray-300">Data Final</label>
-                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
                         </div>
                         <button id="clear-date-filter-btn" class="w-full py-2 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
                              Limpar Filtro
@@ -1897,18 +1902,18 @@
                             <!-- Valor Pago -->
                             <div>
                                 <label for="fabio-valor-pago" class="block text-sm font-medium text-gray-300">Valor Pago (R$)</label>
-                                <input type="number" step="0.01" id="fabio-valor-pago" name="valor" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="number" step="0.01" id="fabio-valor-pago" name="valor" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Data do Pagamento -->
                             <div>
                                 <label for="fabio-data-pagamento" class="block text-sm font-medium text-gray-300">Data do Pagamento</label>
-                                <input type="date" id="fabio-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="date" id="fabio-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
                         <!-- Campo de Observação -->
                          <div>
                             <label for="fabio-observacao" class="block text-sm font-medium text-gray-300">Observação / Detalhes (Opcional)</label>
-                            <textarea id="fabio-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
+                            <textarea id="fabio-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
                         </div>
 
                         <button type="submit" class="w-full py-3 px-4 bg-novan-red text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-200">
@@ -1923,18 +1928,18 @@
                             <!-- Valor Pago -->
                             <div>
                                 <label for="fabio-extra-valor-pago" class="block text-sm font-medium text-gray-300">Valor Pago (R$)</label>
-                                <input type="number" step="0.01" id="fabio-extra-valor-pago" name="valor" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="number" step="0.01" id="fabio-extra-valor-pago" name="valor" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Data do Pagamento -->
                             <div>
                                 <label for="fabio-extra-data-pagamento" class="block text-sm font-medium text-gray-300">Data do Pagamento</label>
-                                <input type="date" id="fabio-extra-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="date" id="fabio-extra-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
                         <!-- Campo de Observação -->
                          <div>
                             <label for="fabio-extra-observacao" class="block text-sm font-medium text-gray-300">Observação / Detalhes (Opcional)</label>
-                            <textarea id="fabio-extra-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
+                            <textarea id="fabio-extra-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
                         </div>
 
                         <button type="submit" class="w-full py-3 px-4 bg-novan-yellow text-gray-900 font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-200">
@@ -1993,13 +1998,13 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Nome Completo -->
                             <div>
-                                <label for="nome" class="block text-sm font-medium text-gray-300">Nome Completo</label>
-                                <input type="text" id="nome" name="nome" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <label for="nome" class="block text-sm font-medium text-gray-300">Nome Completa</label>
+                                <input type="text" id="nome" name="nome" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Telefone (WhatsApp) -->
                             <div>
                                 <label for="telefone" class="block text-sm font-medium text-gray-300">Telefone (WhatsApp)</label>
-                                <input type="tel" id="telefone" name="telefone" oninput="formatPhone(this)" maxlength="15" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="tel" id="telefone" name="telefone" oninput="formatPhone(this)" maxlength="15" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             
                             <!-- NOVO CAMPO: Serviços Contratados (Custom Dropdown) -->
@@ -2041,12 +2046,12 @@
                             <!-- Valor do Contrato (R$) -->
                             <div>
                                 <label for="valorContrato" class="block text-sm font-medium text-gray-300">Valor do Contrato (R$)</label>
-                                <input type="number" step="0.01" id="valorContrato" name="valorContrato" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="number" step="0.01" id="valorContrato" name="valorContrato" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Data da Entrada -->
                             <div>
                                 <label for="dataEntrada" class="block text-sm font-medium text-gray-300">Data da Entrada</label>
-                                <input type="date" id="dataEntrada" name="dataEntrada" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="date" id="dataEntrada" name="dataEntrada" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
                         
@@ -2108,7 +2113,7 @@
                             <!-- Cliente -->
                             <div>
                                 <label for="faturaClienteId" class="block text-sm font-medium text-gray-300">Cliente</label>
-                                <select id="faturaClienteId" name="clienteId" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <select id="faturaClienteId" name="clienteId" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                                     <option value="" disabled selected>Selecione um Cliente</option>
                                     <!-- Opções populadas por JS -->
                                 </select>
@@ -2116,17 +2121,17 @@
                             <!-- Valor -->
                             <div>
                                 <label for="faturaValor" class="block text-sm font-medium text-gray-300">Valor (R$)</label>
-                                <input type="number" step="0.01" id="faturaValor" name="valor" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="number" step="0.01" id="faturaValor" name="valor" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Vencimento -->
                             <div>
                                 <label for="faturaVencimento" class="block text-sm font-medium text-gray-300">Data de Vencimento</label>
-                                <input type="date" id="faturaVencimento" name="vencimento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="date" id="faturaVencimento" name="vencimento" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Status -->
                             <div>
                                 <label for="faturaStatus" class="block text-sm font-medium text-gray-300">Status Inicial</label>
-                                <select id="faturaStatus" name="status" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <select id="faturaStatus" name="status" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                                     <option value="A receber" selected>A receber</option>
                                     <option value="Pago">Pago</option>
                                 </select>
@@ -2168,15 +2173,15 @@
                 <!-- NOVO: FILTRO POR MÊS E DIA (DUPLICADO PARA UX) -->
                 <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
                      <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
-                     <!-- ALTERADO: grid-cols-1 em mobile para forçar empilhamento -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                     <!-- CORREÇÃO MOBILE: grid-cols-1 em mobile, grid-cols-3 em desktop -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
                             <label for="filter-start-date" class="block text-sm font-medium text-gray-300">Data Inicial</label>
-                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
                         </div>
                         <div>
                             <label for="filter-end-date" class="block text-sm font-medium text-gray-300">Data Final</label>
-                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
                         </div>
                         <button id="clear-date-filter-btn" class="w-full py-2 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
                              Limpar Filtro
@@ -2201,12 +2206,12 @@
                             <!-- Descrição -->
                             <div>
                                 <label for="descricao" class="block text-sm font-medium text-gray-300">Descrição</label>
-                                <input type="text" id="descricao" name="descricao" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="text" id="descricao" name="descricao" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Categoria -->
                             <div>
                                 <label for="categoria" class="block text-sm font-medium text-gray-300">Categoria</label>
-                                <select id="categoria" name="categoria" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <select id="categoria" name="categoria" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                                     <option value="" disabled selected>Selecione</option>
                                     <option value="Pessoal">Pessoal (Salários)</option>
                                     <option value="Comissão Fábio">Comissão Fábio (Recorrente)</option>
@@ -2220,12 +2225,12 @@
                             <!-- Valor (R$) -->
                             <div>
                                 <label for="valorDespesa" class="block text-sm font-medium text-gray-300">Valor (R$)</label>
-                                <input type="number" step="0.01" id="valorDespesa" name="valorDespesa" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="number" step="0.01" id="valorDespesa" name="valorDespesa" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Data da Despesa -->
                             <div>
                                 <label for="dataDespesa" class="block text-sm font-medium text-gray-300">Data da Despesa</label>
-                                <input type="date" id="dataDespesa" name="dataDespesa" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="date" id="dataDespesa" name="dataDespesa" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
                         
@@ -2269,7 +2274,7 @@
                             <!-- Tipo de Serviço (Dropdown) -->
                             <div>
                                 <label for="tipoServico" class="block text-sm font-medium text-gray-300">Tipo de Serviço</label>
-                                <select id="tipoServico" name="tipoServico" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <select id="tipoServico" name="tipoServico" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                                     <option value="" disabled selected>Selecione</option>
                                     <option value="Edição de Vídeos">Edição de Vídeos</option>
                                     <option value="Criação de Sites">Criação de Sites</option>
@@ -2281,17 +2286,17 @@
                              <!-- Cliente / Detalhes (Text Input) -->
                             <div>
                                 <label for="clienteAvulso" class="block text-sm font-medium text-gray-300">Cliente / Detalhes</label>
-                                <input type="text" id="clienteAvulso" name="clienteAvulso" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="text" id="clienteAvulso" name="clienteAvulso" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Valor (R$) -->
                             <div>
                                 <label for="valorAvulso" class="block text-sm font-medium text-gray-300">Valor Recebido (R$)</label>
-                                <input type="number" step="0.01" id="valorAvulso" name="valorAvulso" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-green focus:border-novan-green bg-gray-700 text-white transition duration-150" required>
+                                <input type="number" step="0.01" id="valorAvulso" name="valorAvulso" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-green focus:border-novan-green bg-gray-700 text-white transition duration-150" required>
                             </div>
                             <!-- Data do Serviço/Pagamento -->
                             <div>
                                 <label for="dataServico" class="block text-sm font-medium text-gray-300">Data do Serviço/Pagamento</label>
-                                <input type="date" id="dataServico" name="dataServico" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                                <input type="date" id="dataServico" name="dataServico" class="mt-1 block w-full px-4 input-compact border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
                         
