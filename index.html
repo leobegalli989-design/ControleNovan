@@ -955,9 +955,13 @@
                     if (!window.db || !window.userId) return;
                     try {
                         const docRef = doc(window.db, getCollectionPath('faturas'), faturaId);
+                        // LOGGING ADICIONADO PARA DEBUG
+                        console.log(`[DELETE FATURA] Tentando excluir documento: ${faturaId} na coleção: ${getCollectionPath('faturas')}`);
                         await deleteDoc(docRef);
+                        console.log(`[DELETE FATURA] Sucesso ao excluir.`);
                         showActionMessage('Fatura excluída com sucesso!', true);
                     } catch (e) {
+                        console.error(`[DELETE FATURA] ERRO FATAL:`, e);
                         showActionMessage(`Erro ao excluir fatura: ${e.message}`, false);
                     }
                 }
@@ -1240,9 +1244,13 @@
                     if (!window.db || !window.userId) return;
                     try {
                         const docRef = doc(window.db, getCollectionPath('despesas'), despesaId);
+                        // LOGGING ADICIONADO PARA DEBUG
+                        console.log(`[DELETE DESPESA] Tentando excluir documento: ${despesaId} na coleção: ${getCollectionPath('despesas')}`);
                         await deleteDoc(docRef);
+                        console.log(`[DELETE DESPESA] Sucesso ao excluir.`);
                         showActionMessage('Despesa excluída com sucesso!', true);
                     } catch (e) {
+                        console.error(`[DELETE DESPESA] ERRO FATAL:`, e);
                         showActionMessage(`Erro ao excluir despesa: ${e.message}`, false);
                     }
                 }
@@ -1349,9 +1357,13 @@
                     if (!window.db || !window.userId) return;
                     try {
                         const docRef = doc(window.db, getCollectionPath('servicos_avulsos'), avulsoId);
+                        // LOGGING ADICIONADO PARA DEBUG
+                        console.log(`[DELETE AVULSO] Tentando excluir documento: ${avulsoId} na coleção: ${getCollectionPath('servicos_avulsos')}`);
                         await deleteDoc(docRef);
+                        console.log(`[DELETE AVULSO] Sucesso ao excluir.`);
                         showActionMessage('Serviço avulso excluído com sucesso!', true);
                     } catch (e) {
+                        console.error(`[DELETE AVULSO] ERRO FATAL:`, e);
                         showActionMessage(`Erro ao excluir serviço avulso: ${e.message}`, false);
                     }
                 }
