@@ -332,6 +332,7 @@
             
             // Atualiza o cálculo sempre que muda de tela (o Dashboard já chama no listener)
             if (view === 'despesas') {
+                // Filtra as despesas pelo período atual
                 renderDespesasTable(allDespesas.filter(d => isDateInFilter(d.dataDespesa)));
             } else if (view === 'servicos-avulsos') {
                 renderServicosAvulsosTable(allServicosAvulsos.filter(a => isDateInFilter(a.dataServico)));
@@ -349,6 +350,7 @@
 
         // NOVO: Função para aplicar o filtro de data e recalcular tudo
         window.applyDateFilter = () => {
+            // BUG FIX: Pega o valor do primeiro input encontrado, que deve estar sincronizado
             const start = document.getElementById('filter-start-date').value;
             const end = document.getElementById('filter-end-date').value;
 
@@ -357,6 +359,13 @@
             
             // Recalcular TUDO
             calculateDashboardTotals();
+            
+            // Atualiza o filtro de data nas views que o usuário pode estar
+            const currentView = document.querySelector('.app-view:not(.hidden)');
+            if (currentView) {
+                const viewId = currentView.id.replace('view-', '');
+                navigateTo(viewId);
+            }
         };
 
         const calculateDashboardTotals = () => {
@@ -412,13 +421,13 @@
             
             // --- CÁLCULO FÁBIO (INDICADORES) ---
             const lucroBruto = totalRecebido - outrasDespesas;
-            // O pagamento simulado foi removido, mas o lucroBruto é mantido como referência
-
+            
             // Atualizar UI da aba Fabio
-            const lucroBrutoEl = document.getElementById('lucro-bruto-fabio');
             const totalPagoFabioEl = document.getElementById('total-pago-fabio');
-            if (lucroBrutoEl) lucroBrutoEl.textContent = formatCurrency(lucroBruto);
+            const lucroBrutoEl = document.getElementById('lucro-bruto-fabio');
+
             if (totalPagoFabioEl) totalPagoFabioEl.textContent = formatCurrency(despesasFabioRegistradas); 
+            if (lucroBrutoEl) lucroBrutoEl.textContent = formatCurrency(lucroBruto);
 
 
             // --- ATUALIZAÇÃO DASHBOARD ---
@@ -463,6 +472,19 @@
             } else {
                 overdueAlert.classList.add('hidden');
             }
+            
+            // **CORREÇÃO BUG 3:** Atualiza o resumo da aba Despesas
+            const totalDespesasSummaryEl = document.getElementById('total-despesas-summary');
+            if (totalDespesasSummaryEl) totalDespesasSummaryEl.textContent = formatCurrency(totalDespesas);
+
+            // Atualiza os indicadores de período
+            const currentPeriodText = (filterStartDate || filterEndDate) ?
+                `(${formatDate(filterStartDate || 'N/A')} a ${formatDate(filterEndDate || 'N/A')})` :
+                '(Geral)';
+
+            document.getElementById('despesas-filter-period').textContent = currentPeriodText;
+            document.getElementById('fabio-filter-period').textContent = currentPeriodText;
+
 
             // Update Chart.js (Bar Chart Implementation)
             const ctx = document.getElementById('financeChart').getContext('2d');
@@ -686,7 +708,7 @@
             console.log(`[NOVO CLIENTE] Iniciando cadastro para ${nome}. Valor: ${valorContrato}. Serviços: ${servicosContratados.join(', ')}`);
 
 
-            showActionMessage(`Processando cadastro e gerando faturas iniciais...`, 'processing');
+            showActionMessage(`Processando cadastro...`, 'processing');
 
             try {
                 // 1. Create Client
@@ -702,38 +724,15 @@
                 });
                 const clienteId = newClientRef.id;
                 console.log(`[NOVO CLIENTE] Cliente criado com sucesso. ID: ${clienteId}`); 
-
-                const faturasRef = collection(window.db, getCollectionPath('faturas'));
-                
-                // 2. Generate Initial Fatura (PAID)
-                await addDoc(faturasRef, {
-                    clienteId: clienteId, 
-                    valor: valorContrato,
-                    vencimento: dataEntrada, 
-                    status: 'Pago',
-                    criadoEm: serverTimestamp()
-                });
-
-                // 3. Generate Next Fatura (A RECEBER)
-                const nextVencimento = new Date(dataEntrada.getTime()); 
-                nextVencimento.setMonth(nextVencimento.getMonth() + 1); 
-                
-                await addDoc(faturasRef, {
-                    clienteId: clienteId, 
-                    valor: valorContrato,
-                    vencimento: nextVencimento,
-                    status: 'A receber',
-                    criadoEm: serverTimestamp()
-                });
                 
                 form.reset();
                 // Limpa os checkboxes e reseta o texto do toggle após o cadastro
                 document.querySelectorAll('#servicos-dropdown input[type="checkbox"]').forEach(cb => cb.checked = false);
                 updateServicosToggleText(); 
-                showActionMessage(`Cliente ${nome} e faturas criadas com sucesso!`, true);
+                showActionMessage(`Cliente ${nome} cadastrado com sucesso! Crie a primeira fatura manualmente.`, true); // Updated success message
 
             } catch (e) {
-                console.error("ERRO CRÍTICO ao adicionar cliente/fatura:", e);
+                console.error("ERRO CRÍTICO ao adicionar cliente:", e);
                 showActionMessage(`ERRO FATAL: Falha no cadastro. Por favor, verifique as Regras de Segurança do Firestore. Mensagem: ${e.message}`, false); 
             }
         }
@@ -1017,14 +1016,13 @@
 
                 actionCell.appendChild(select);
 
-                if(status === 'Pago') {
-                    const generateBtn = document.createElement('button');
-                    generateBtn.textContent = '➕';
-                    generateBtn.title = 'Gerar Próxima Fatura';
-                    generateBtn.className = 'p-1 text-xs text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150'; // Compactado
-                    generateBtn.onclick = () => generateNextFatura(fatura.clienteId, fatura.valor, fatura.vencimento);
-                    actionCell.appendChild(generateBtn);
-                }
+                // Botão Manual Gerar Próxima Fatura (Mantido para uso manual, mas a função é a mesma da automática)
+                const generateBtn = document.createElement('button');
+                generateBtn.textContent = '➕';
+                generateBtn.title = 'Gerar Próxima Fatura';
+                generateBtn.className = 'p-1 text-xs text-novan-purple hover:text-white hover:bg-novan-purple rounded-full transition duration-150'; // Compactado
+                generateBtn.onclick = () => generateNextFatura(fatura.clienteId, fatura.valor, fatura.vencimento);
+                actionCell.appendChild(generateBtn);
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '🗑️';
@@ -1058,11 +1056,18 @@
                         throw new Error("Fatura não encontrada para atualização.");
                     }
                     const faturaData = faturaDoc.data();
-
+                    
+                    // NOVA VALIDAÇÃO CRUCIAL
+                    if (!faturaData.clienteId || isNaN(faturaData.valor) || faturaData.valor <= 0 || !faturaData.vencimento) {
+                        console.error("[RECORRÊNCIA] ERRO: Dados da fatura incompletos ou inválidos para recorrência.", faturaData);
+                        throw new Error("Dados da fatura incompletos (ID Cliente, Valor ou Vencimento ausentes/inválidos).");
+                    }
+                    
                     // 1. Atualiza o status
                     await updateDoc(docRef, { status: newStatus });
 
                     // 2. Gera a próxima fatura automaticamente
+                    console.log(`[RECORRÊNCIA] Chamando generateNextFatura para Cliente: ${faturaData.clienteId}. Último vencimento: ${formatDate(faturaData.vencimento)}`);
                     await generateNextFatura(faturaData.clienteId, faturaData.valor, faturaData.vencimento);
 
                     showActionMessage('Status da fatura atualizado para Pago e próxima fatura gerada automaticamente!', true);
@@ -1073,7 +1078,8 @@
                 }
 
             } catch (e) {
-                showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
+                console.error(`[ERRO ATUALIZAR STATUS/RECORRÊNCIA] ${e.message}`, e);
+                showActionMessage(`Erro ao atualizar status/gerar recorrência: ${e.message}`, false);
             }
         }
         
@@ -1082,41 +1088,55 @@
                 showActionMessage('Você não está autenticado para realizar esta ação.', false);
                 return;
             }
+            
+            // NOVA VALIDAÇÃO
+            const valor = parseFloat(valorContrato);
+             if (isNaN(valor) || valor <= 0) {
+                 console.error(`[RECORRÊNCIA] ERRO: Valor do contrato inválido: ${valorContrato}`);
+                 showActionMessage(`Erro ao gerar próxima fatura: Valor de contrato inválido.`, false);
+                 return;
+            }
+            
             try {
-                const lastDate = (lastDueDate && lastDueDate.toDate) ? lastDueDate.toDate() : createSafeDate(new Date().toISOString().split('T')[0]);
+                // 1. Get the last valid Date object (use Noon to avoid DST/timezone issues)
+                const lastDate = (lastDueDate && lastDueDate.toDate) ? lastDueDate.toDate() : new Date();
+                lastDate.setHours(12, 0, 0, 0); // Normalize time
                 
+                // 2. Determine original day and calculate target year/month
                 const originalDay = lastDate.getDate();
-                
-                // Inicia a data no dia 1 do mês atual
-                const nextVencimento = new Date(lastDate);
-                nextVencimento.setDate(1); 
-                
-                // Avança para o mês seguinte (garante que caia no mês certo)
-                nextVencimento.setMonth(nextVencimento.getMonth() + 1); 
-                
-                // Tenta setar o dia original
-                nextVencimento.setDate(originalDay);
-                
-                // Se, após setDate, o mês rolou para o mês seguinte (overflow, ex: setando dia 31 em Fev -> 3 Mar), 
-                // ajustamos para o último dia do mês desejado, mantendo a regra de "mesmo dia".
-                // Se o mês resultante for diferente do mês que esperávamos (targetMonth), ajustamos para o último dia do mês desejado.
-                const targetMonth = (lastDate.getMonth() + 1) % 12;
-                if (nextVencimento.getMonth() !== targetMonth) {
-                    // Isso significa que o mês não tem o dia original (ex: 31 Fev). 
-                    // Setamos para o último dia do mês de destino.
-                    nextVencimento.setDate(0); 
+                const currentMonth = lastDate.getMonth(); // 0-11
+                const currentYear = lastDate.getFullYear();
+
+                let targetMonth = currentMonth + 1; 
+                let targetYear = currentYear;
+
+                if (targetMonth > 11) {
+                    targetMonth = 0; // Rolls to January (0)
+                    targetYear += 1;
                 }
                 
+                // 3. Create initial date at the original day of the target month.
+                let nextVencimento = new Date(targetYear, targetMonth, originalDay, 12, 0, 0); 
+                
+                // 4. Check for overflow: If the month rolled over, set to the last day of the target month.
+                if (nextVencimento.getMonth() !== targetMonth) {
+                    nextVencimento = new Date(targetYear, targetMonth + 1, 0, 12, 0, 0);
+                }
+                
+                console.log(`[RECORRÊNCIA MANUAL/AUTO] TENTANDO ADICIONAR fatura para ${clienteId}. Vencimento calculado: ${formatDate(nextVencimento)}`);
+
                 const faturasRef = collection(window.db, getCollectionPath('faturas'));
                 await addDoc(faturasRef, {
                     clienteId,
-                    valor: valorContrato,
-                    vencimento: nextVencimento,
+                    valor: valor, // Usar o valor validado
+                    vencimento: nextVencimento, 
                     status: 'A receber',
                     criadoEm: serverTimestamp()
                 });
-                showActionMessage(`Próxima fatura (${formatCurrency(valorContrato)}) gerada para ${formatDate(nextVencimento)}.`, true);
+                console.log(`[RECORRÊNCIA MANUAL/AUTO] SUCESSO! Fatura adicionada no Firestore.`);
+                // O showActionMessage é agora exibido em updateFaturaStatus para evitar duplicidade
             } catch (e) {
+                console.error(`[ERRO CRÍTICO ADD FATURA]`, e); 
                 showActionMessage(`Erro ao gerar próxima fatura: ${e.message}`, false);
             }
         }
@@ -1179,7 +1199,7 @@
             const tableBody = document.getElementById('despesas-table-body');
             tableBody.innerHTML = '';
             
-            // O totalDespesas-summary não é mais atualizado aqui, mas sim no calculateDashboardTotals
+            // O totalDespesas-summary é atualizado em calculateDashboardTotals
             
             if (despesas.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada no período atual.</td></tr>`;
@@ -1333,6 +1353,8 @@
             const form = document.getElementById('fabio-payment-form');
             const valor = parseFloat(form.valor.value);
             const dataDespesa = createSafeDate(form.dataPagamento.value); 
+            // NOVO: Captura a observação
+            const observacao = form.observacao.value || "Nenhuma observação.";
 
             if (isNaN(valor) || valor <= 0 || isNaN(dataDespesa.getTime())) {
                 showActionMessage('Preencha o valor e a data corretamente.', false);
@@ -1347,6 +1369,7 @@
                     categoria: 'Comissão Fábio', // Categoria fixa para rastreamento
                     valor: valor,
                     dataDespesa: dataDespesa,
+                    observacao: observacao, // NOVO: Salva observação
                     detalhes: `Registro manual de pagamento de comissão.`,
                     criadoEm: serverTimestamp()
                 });
@@ -1369,7 +1392,7 @@
             tableBody.innerHTML = '';
 
             if (pagamentosFabio.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>`;
                 return;
             }
 
@@ -1386,6 +1409,15 @@
                 row.insertCell().textContent = formatDate(pagamento.dataDespesa);
                 row.insertCell().textContent = pagamento.descricao || 'Comissão Fábio'; 
                 row.insertCell().textContent = formatCurrency(pagamento.valor);
+                // NOVO: Coluna Observação
+                row.insertCell().textContent = pagamento.observacao || 'N/A'; 
+            });
+            
+            // Aplicar estilos compactos nas células do HTML
+            Array.from(tableBody.rows).forEach(row => {
+                Array.from(row.cells).forEach((cell, index) => {
+                    cell.classList.add('py-2', 'px-2', 'table-cell-compact');
+                });
             });
         }
 
@@ -1440,16 +1472,40 @@
                      checkbox.addEventListener('change', updateServicosToggleText);
                  });
                  
-                 // Adiciona listeners para os filtros de data no dashboard
-                 document.getElementById('filter-start-date').addEventListener('change', applyDateFilter);
-                 document.getElementById('filter-end-date').addEventListener('change', applyDateFilter);
-                 document.getElementById('clear-date-filter-btn').addEventListener('click', () => {
-                      document.getElementById('filter-start-date').value = '';
-                      document.getElementById('filter-end-date').value = '';
-                      filterStartDate = null;
-                      filterEndDate = null;
-                      calculateDashboardTotals();
-                 });
+                // --- NOVO: BINDINGS PARA SINCRONIZAÇÃO DE FILTROS ---
+                
+                const syncAndApplyFilter = (e) => {
+                    const isStart = e.target.id === 'filter-start-date';
+                    const targetId = isStart ? 'filter-start-date' : 'filter-end-date';
+                    
+                    // Sincroniza o valor em todas as instâncias do ID
+                    document.querySelectorAll(`#${targetId}`).forEach(input => {
+                        if (input !== e.target) input.value = e.target.value;
+                    });
+                    applyDateFilter();
+                };
+
+                const clearAndSyncFilters = () => {
+                    document.querySelectorAll('#filter-start-date').forEach(input => input.value = '');
+                    document.querySelectorAll('#filter-end-date').forEach(input => input.value = '');
+                    filterStartDate = null;
+                    filterEndDate = null;
+                    calculateDashboardTotals();
+                };
+
+                // Binds all instances of date inputs to the sync function
+                document.querySelectorAll('#filter-start-date').forEach(input => {
+                    input.addEventListener('change', syncAndApplyFilter);
+                });
+                
+                document.querySelectorAll('#filter-end-date').forEach(input => {
+                    input.addEventListener('change', syncAndApplyFilter);
+                });
+
+                // Binds all clear buttons to the clear function
+                document.querySelectorAll('#clear-date-filter-btn').forEach(button => {
+                    button.addEventListener('click', clearAndSyncFilters);
+                });
              }
         });
 
@@ -1664,6 +1720,24 @@
                 
                 <div id="fabio-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
+                <!-- NOVO: FILTRO POR MÊS E DIA -->
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
+                     <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="filter-start-date" class="block text-sm font-medium text-gray-300">Data Inicial</label>
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                        </div>
+                        <div>
+                            <label for="filter-end-date" class="block text-sm font-medium text-gray-300">Data Final</label>
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                        </div>
+                        <button id="clear-date-filter-btn" class="w-full py-2 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
+                             Limpar Filtro
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Resumo de Pagamentos e Registro Manual (AGORA SÓ MOSTRA O TOTAL PAGO) -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-purple">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Pagamentos e Registro Manual</h3>
@@ -1697,6 +1771,12 @@
                                 <input type="date" id="fabio-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
+                        <!-- NOVO: Campo de Observação -->
+                         <div>
+                            <label for="fabio-observacao" class="block text-sm font-medium text-gray-300">Observação / Detalhes (Opcional)</label>
+                            <textarea id="fabio-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
+                        </div>
+
                         <button type="submit" class="w-full py-3 px-4 bg-novan-red text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-200">
                             Registrar Pagamento de Comissão
                         </button>
@@ -1704,7 +1784,7 @@
                 </div>
 
                 <!-- Historico de Recebimentos Fábio -->
-                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Recebimentos Registrados</h3>
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Recebimentos Registrados <span id="fabio-filter-period" class="text-sm font-normal text-gray-400"></span></h3>
                 <p class="text-sm text-gray-400">Exibe todas as despesas registradas na categoria "Comissão Fábio" no período do filtro.</p>
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
@@ -1713,10 +1793,11 @@
                                 <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data do Registro</th>
                                 <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
                                 <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Pago</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Observação</th>
                             </tr>
                         </thead>
                         <tbody id="fabio-historico-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
-                            <tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>
+                            <tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1792,7 +1873,7 @@
                         </div>
                         
                         <button type="submit" class="w-full py-3 px-4 bg-novan-purple text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 transition duration-200">
-                            Cadastrar Cliente e Gerar Faturas Iniciais
+                            Cadastrar Cliente
                         </button>
                     </form>
                 </div>
@@ -1906,6 +1987,24 @@
                 
                 <div id="despesas-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
+                <!-- NOVO: FILTRO POR MÊS E DIA (DUPLICADO PARA UX) -->
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
+                     <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="filter-start-date" class="block text-sm font-medium text-gray-300">Data Inicial</label>
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                        </div>
+                        <div>
+                            <label for="filter-end-date" class="block text-sm font-medium text-gray-300">Data Final</label>
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                        </div>
+                        <button id="clear-date-filter-btn" class="w-full py-2 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
+                             Limpar Filtro
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Resumo de Despesas (Card Único) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <!-- Total de Despesas -->
@@ -1957,7 +2056,7 @@
                 </div>
                 
                 <!-- Tabela de Despesas -->
-                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Despesas (No Período)</h3>
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Despesas (No Período) <span id="despesas-filter-period" class="text-sm font-normal text-gray-400"></span></h3>
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
