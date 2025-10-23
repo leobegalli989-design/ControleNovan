@@ -445,8 +445,10 @@
             const totalComissaoFabio = despesasFabioRegistradas + despesasFabioExtraRegistradas; // Soma total da comissão
             
             // Totais Finais
-            const totalDespesas = outrasDespesas + totalComissaoFabio;
-            const totalLucro = totalRecebido - totalDespesas;
+            const totalDespesasGeral = outrasDespesas + totalComissaoFabio; // Total de despesas (P&L)
+            const totalDespesasOperacionais = outrasDespesas; // Total SÓ de operacionais (Exclui Fábio)
+
+            const totalLucro = totalRecebido - totalDespesasGeral; // Lucro líquido final (usa o total geral)
             
             // --- CÁLCULO FÁBIO (INDICADORES) ---
             const lucroBruto = totalRecebido - outrasDespesas;
@@ -481,7 +483,9 @@
             document.getElementById('total-recebido').textContent = formatCurrency(totalRecebido);
             document.getElementById('total-a-receber').textContent = formatCurrency(totalAReceber);
             document.getElementById('total-atrasado').textContent = formatCurrency(totalAtrasado);
-            document.getElementById('total-despesas-dashboard').textContent = formatCurrency(totalDespesas); 
+            
+            // ATUALIZAÇÃO CRÍTICA: Total Operacional (Exclui Fábio)
+            document.getElementById('total-despesas-dashboard').textContent = formatCurrency(totalDespesasOperacionais); 
             
             // Update Lucro Card Border
             lucroCard.classList.remove('border-novan-green', 'border-novan-red', 'border-novan-purple', 'border-gray-500');
@@ -504,9 +508,9 @@
                 overdueAlert.classList.add('hidden');
             }
             
-            // **CORREÇÃO BUG 3:** Atualiza o resumo da aba Despesas
+            // **CORREÇÃO BUG 3:** Atualiza o resumo da aba Despesas (JÁ EXCLUI FÁBIO)
             const totalDespesasSummaryEl = document.getElementById('total-despesas-summary');
-            if (totalDespesasSummaryEl) totalDespesasSummaryEl.textContent = formatCurrency(outrasDespesas); // **AJUSTADO: Deve somar apenas as outras despesas**
+            if (totalDespesasSummaryEl) totalDespesasSummaryEl.textContent = formatCurrency(outrasDespesas); 
 
             // Atualiza os indicadores de período
             const currentPeriodText = (filterStartDate || filterEndDate) ?
@@ -1270,7 +1274,7 @@
             const tableBody = document.getElementById('despesas-table-body');
             tableBody.innerHTML = '';
             
-            // NOVO FILTRO: Excluir comissões do Fábio (ambas) da aba Despesas Operacionais
+            // FILTRO ATUALIZADO: Excluir comissões do Fábio (ambas) da aba Despesas Operacionais
             let despesasFiltradas = despesas.filter(d => 
                 d.categoria !== 'Comissão Fábio' && d.categoria !== 'Comissão Fábio (Extra)'
             );
@@ -1807,9 +1811,9 @@
                         <p class="text-sm font-medium text-gray-300">Total em Atraso (⚠️)</p>
                         <p id="total-atrasado" class="text-xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
-                    <!-- Total em Despesas -->
+                    <!-- Total Operacional (Exclui comissão Fábio) -->
                     <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-gray-500 transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
-                        <p class="text-sm font-medium text-gray-300">Total em Despesas (💸)</p>
+                        <p class="text-sm font-medium text-gray-300">Total Operacional (💸)</p>
                         <p id="total-despesas-dashboard" class="text-xl font-extrabold text-gray-400 mt-1">R$ 0,00</p>
                     </div>
                 </div>
