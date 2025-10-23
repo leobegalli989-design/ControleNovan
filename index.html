@@ -403,6 +403,7 @@
             let totalAtrasado = 0;
             let outrasDespesas = 0;
             let despesasFabioRegistradas = 0;
+            let despesasFabioExtraRegistradas = 0; // NOVO: Para rastrear Serviços Extras
 
             // 1. Faturas
             filteredFaturas.forEach(fatura => {
@@ -420,13 +421,15 @@
                 }
             });
 
-            // 2. Despesas (Separando Fábio)
+            // 2. Despesas (Separando Fábio Regular e Extra)
             filteredDespesas.forEach(despesa => {
                 const valor = parseFloat(despesa.valor);
                 if (isNaN(valor)) return; 
                 
                 if (despesa.categoria === 'Comissão Fábio') {
                     despesasFabioRegistradas += valor;
+                } else if (despesa.categoria === 'Comissão Fábio (Extra)') { // NOVO
+                    despesasFabioExtraRegistradas += valor;
                 } else {
                     outrasDespesas += valor;
                 }
@@ -439,8 +442,10 @@
                 totalRecebido += valor; 
             });
 
+            const totalComissaoFabio = despesasFabioRegistradas + despesasFabioExtraRegistradas; // Soma total da comissão
+            
             // Totais Finais
-            const totalDespesas = outrasDespesas + despesasFabioRegistradas;
+            const totalDespesas = outrasDespesas + totalComissaoFabio;
             const totalLucro = totalRecebido - totalDespesas;
             
             // --- CÁLCULO FÁBIO (INDICADORES) ---
@@ -448,9 +453,11 @@
             
             // Atualizar UI da aba Fabio
             const totalPagoFabioEl = document.getElementById('total-pago-fabio');
+            const totalPagoFabioExtraEl = document.getElementById('total-pago-fabio-extra'); // NOVO
             const lucroBrutoEl = document.getElementById('lucro-bruto-fabio');
 
             if (totalPagoFabioEl) totalPagoFabioEl.textContent = formatCurrency(despesasFabioRegistradas); 
+            if (totalPagoFabioExtraEl) totalPagoFabioExtraEl.textContent = formatCurrency(despesasFabioExtraRegistradas); // NOVO
             if (lucroBrutoEl) lucroBrutoEl.textContent = formatCurrency(lucroBruto);
 
 
@@ -486,7 +493,7 @@
             lucroEl.classList.add(lucroTextColor);
             
             // NOVO: Atualiza o card de comissão de Fábio no Dashboard
-            document.getElementById('total-comissao-fabio').textContent = formatCurrency(despesasFabioRegistradas); 
+            document.getElementById('total-comissao-fabio').textContent = formatCurrency(totalComissaoFabio); // Usa o total combinado
             
             // Overdue alert
             const overdueAlert = document.getElementById('overdue-alert');
@@ -499,7 +506,7 @@
             
             // **CORREÇÃO BUG 3:** Atualiza o resumo da aba Despesas
             const totalDespesasSummaryEl = document.getElementById('total-despesas-summary');
-            if (totalDespesasSummaryEl) totalDespesasSummaryEl.textContent = formatCurrency(totalDespesas);
+            if (totalDespesasSummaryEl) totalDespesasSummaryEl.textContent = formatCurrency(outrasDespesas); // **AJUSTADO: Deve somar apenas as outras despesas**
 
             // Atualiza os indicadores de período
             const currentPeriodText = (filterStartDate || filterEndDate) ?
@@ -575,9 +582,11 @@
             // Passa os arrays filtrados para a renderização das tabelas
             renderFaturasTable(filteredFaturas);
             renderClientesTable(allClientesArray); // Clientes não são filtrados por data
-            renderDespesasTable(filteredDespesas);
+            renderDespesasTable(filteredDespesas); // Chama a função que agora filtra a comissão
             renderServicosAvulsosTable(filteredAvulsos); 
-            renderFabioView(filteredDespesas.filter(d => d.categoria === 'Comissão Fábio')); // Histórico de Pagamentos Fábio
+            renderFabioView(filteredDespesas.filter(d => 
+                d.categoria === 'Comissão Fábio' || d.categoria === 'Comissão Fábio (Extra)' // Passa as duas categorias
+            ));
         };
 
         // --- AUTHENTICATION ---
@@ -1261,20 +1270,23 @@
             const tableBody = document.getElementById('despesas-table-body');
             tableBody.innerHTML = '';
             
-            // O totalDespesas-summary é atualizado em calculateDashboardTotals
+            // NOVO FILTRO: Excluir comissões do Fábio (ambas) da aba Despesas Operacionais
+            let despesasFiltradas = despesas.filter(d => 
+                d.categoria !== 'Comissão Fábio' && d.categoria !== 'Comissão Fábio (Extra)'
+            );
             
-            if (despesas.length === 0) {
+            if (despesasFiltradas.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada no período atual.</td></tr>`;
                 return;
             }
             
-            despesas.sort((a, b) => {
+            despesasFiltradas.sort((a, b) => {
                 const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
                 const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
                 return dateB - dateA;
             });
 
-            despesas.forEach(despesa => {
+            despesasFiltradas.forEach(despesa => {
                 const row = tableBody.insertRow();
                 row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700 transition duration-150';
                 
@@ -1415,19 +1427,29 @@
             });
         }
         
-        // --- FÁBIO MANAGEMENT (30% COMMISSION) ---
+        // --- FÁBIO MANAGEMENT (30% COMMISSION) - REGULAR COMMISSIONS ---
 
         // NOVO: Registra o pagamento MANUALMENTE como despesa
-        async function handleNewFabioPaymentManual(event) {
+        async function handleNewFabioPaymentManual(event, category) {
             event.preventDefault(); 
             if (!window.db || !window.userId) {
                 showActionMessage('Você não está autenticado para realizar esta ação.', false);
                 return;
             }
-            const form = document.getElementById('fabio-payment-form');
+            
+            let form, descricaoBase;
+            if (category === 'Comissão Fábio') {
+                form = document.getElementById('fabio-payment-form');
+                descricaoBase = `Pagamento de Comissão Fábio (Recorrente)`;
+            } else if (category === 'Comissão Fábio (Extra)') { // NOVO FORM
+                form = document.getElementById('fabio-extra-payment-form');
+                descricaoBase = `Pagamento de Comissão Fábio (Extra - Manual)`;
+            } else {
+                return;
+            }
+
             const valor = parseFloat(form.valor.value);
             const dataDespesa = createSafeDate(form.dataPagamento.value); 
-            // NOVO: Captura a observação
             const observacao = form.observacao.value || "Nenhuma observação.";
 
             if (isNaN(valor) || valor <= 0 || isNaN(dataDespesa.getTime())) {
@@ -1439,59 +1461,84 @@
                 const despesasRef = collection(window.db, getCollectionPath('despesas'));
                 
                 await addDoc(despesasRef, {
-                    descricao: `Pagamento de Comissão Fábio (Manual)`,
-                    categoria: 'Comissão Fábio', // Categoria fixa para rastreamento
+                    descricao: descricaoBase,
+                    categoria: category, // Categoria fixa para rastreamento
                     valor: valor,
                     dataDespesa: dataDespesa,
-                    observacao: observacao, // NOVO: Salva observação
-                    detalhes: `Registro manual de pagamento de comissão.`,
+                    observacao: observacao, 
+                    detalhes: `Registro manual de pagamento de comissão ${category}.`,
                     criadoEm: serverTimestamp()
                 });
 
                 form.reset();
-                showActionMessage(`Pagamento de ${formatCurrency(valor)} registrado para Fábio com sucesso!`, true);
+                showActionMessage(`Pagamento de ${formatCurrency(valor)} registrado para Fábio (${category}) com sucesso!`, true);
 
             } catch (e) {
-                console.error("Erro ao registrar pagamento Fábio:", e);
+                console.error(`Erro ao registrar pagamento Fábio (${category}):`, e);
                 showActionMessage(`ERRO ao registrar pagamento: ${e.message}`, false);
             }
         }
         window.handleNewFabioPaymentManual = handleNewFabioPaymentManual;
+        // Adiciona um wrapper específico para o novo form
+        window.handleNewFabioExtraPaymentManual = (event) => handleNewFabioPaymentManual(event, 'Comissão Fábio (Extra)');
 
 
         // NOVO: Renderiza a tabela de histórico de pagamentos de Fábio
         function renderFabioView(pagamentosFabio) {
-            const tableBody = document.getElementById('fabio-historico-body');
-            if (!tableBody) return;
-            tableBody.innerHTML = '';
+            const tableBodyRecorrente = document.getElementById('fabio-historico-body');
+            const tableBodyExtra = document.getElementById('fabio-extra-historico-body'); // NOVO
 
-            if (pagamentosFabio.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>`;
-                return;
+            if (!tableBodyRecorrente || !tableBodyExtra) return;
+            tableBodyRecorrente.innerHTML = '';
+            tableBodyExtra.innerHTML = '';
+
+            const pagamentosRecorrente = pagamentosFabio.filter(p => p.categoria === 'Comissão Fábio');
+            const pagamentosExtra = pagamentosFabio.filter(p => p.categoria === 'Comissão Fábio (Extra)'); // NOVO
+
+            // Renderiza tabela Recorrente
+            if (pagamentosRecorrente.length === 0) {
+                tableBodyRecorrente.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento recorrente registrado no período atual.</td></tr>`;
+            } else {
+                 pagamentosRecorrente.sort((a, b) => {
+                    const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
+                    const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
+                    return dateB - dateA;
+                });
+                pagamentosRecorrente.forEach(pagamento => {
+                    const row = tableBodyRecorrente.insertRow();
+                    row.className = 'bg-gray-800 border-b border-gray-700 transition duration-150';
+                    row.insertCell().textContent = formatDate(pagamento.dataDespesa);
+                    row.insertCell().textContent = pagamento.descricao || 'Comissão Fábio'; 
+                    row.insertCell().textContent = formatCurrency(pagamento.valor);
+                    row.insertCell().textContent = pagamento.observacao || 'N/A'; 
+                });
+            }
+            
+            // Renderiza tabela Extra (NOVO)
+            if (pagamentosExtra.length === 0) {
+                tableBodyExtra.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento de serviço extra registrado no período atual.</td></tr>`;
+            } else {
+                 pagamentosExtra.sort((a, b) => {
+                    const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
+                    const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
+                    return dateB - dateA;
+                });
+                pagamentosExtra.forEach(pagamento => {
+                    const row = tableBodyExtra.insertRow();
+                    row.className = 'bg-gray-800 border-b border-gray-700 transition duration-150';
+                    row.insertCell().textContent = formatDate(pagamento.dataDespesa);
+                    row.insertCell().textContent = pagamento.descricao || 'Comissão Fábio (Extra)'; 
+                    row.insertCell().textContent = formatCurrency(pagamento.valor);
+                    row.insertCell().textContent = pagamento.observacao || 'N/A'; 
+                });
             }
 
-            pagamentosFabio.sort((a, b) => {
-                const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
-                const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
-                return dateB - dateA;
+            // Aplicar estilos compactos em ambas as tabelas
+            Array.from(tableBodyRecorrente.rows).forEach(row => {
+                Array.from(row.cells).forEach(cell => cell.classList.add('py-2', 'px-2', 'table-cell-compact'));
             });
-
-            pagamentosFabio.forEach(pagamento => {
-                const row = tableBody.insertRow();
-                row.className = 'bg-gray-800 border-b border-gray-700 transition duration-150';
-
-                row.insertCell().textContent = formatDate(pagamento.dataDespesa);
-                row.insertCell().textContent = pagamento.descricao || 'Comissão Fábio'; 
-                row.insertCell().textContent = formatCurrency(pagamento.valor);
-                // NOVO: Coluna Observação
-                row.insertCell().textContent = pagamento.observacao || 'N/A'; 
-            });
-            
-            // Aplicar estilos compactos nas células do HTML
-            Array.from(tableBody.rows).forEach(row => {
-                Array.from(row.cells).forEach((cell, index) => {
-                    cell.classList.add('py-2', 'px-2', 'table-cell-compact');
-                });
+            Array.from(tableBodyExtra.rows).forEach(row => {
+                Array.from(row.cells).forEach(cell => cell.classList.add('py-2', 'px-2', 'table-cell-compact'));
             });
         }
 
@@ -1535,8 +1582,10 @@
                  document.getElementById('manual-fatura-form').addEventListener('submit', handleNewFaturaManual); 
                  document.getElementById('avulso-form').addEventListener('submit', handleNewAvulso); 
                  
-                 // Listener do novo formulário de Fábio
-                 document.getElementById('fabio-payment-form').addEventListener('submit', handleNewFabioPaymentManual);
+                 // Listener do novo formulário de Fábio (Recorrente)
+                 document.getElementById('fabio-payment-form').addEventListener('submit', (e) => handleNewFabioPaymentManual(e, 'Comissão Fábio'));
+                 // Listener do novo formulário de Fábio (Extra)
+                 document.getElementById('fabio-extra-payment-form').addEventListener('submit', (e) => handleNewFabioPaymentManual(e, 'Comissão Fábio (Extra)'));
                  
                  // Inicialização principal
                  initApp();
@@ -1794,7 +1843,7 @@
                 
                 <div id="fabio-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
 
-                <!-- NOVO: FILTRO POR MÊS E DIA -->
+                <!-- FILTRO POR MÊS E DIA -->
                 <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
                      <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
@@ -1812,26 +1861,31 @@
                     </div>
                 </div>
 
-                <!-- Resumo de Pagamentos e Registro Manual (AGORA SÓ MOSTRA O TOTAL PAGO) -->
+                <!-- RESUMO GERAL DE PAGAMENTOS DE FÁBIO -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-purple">
                     <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Pagamentos e Registro Manual</h3>
                     <p class="text-sm text-gray-400 mb-6">Esta seção exibe o total das comissões registradas no período de filtro atual.</p>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Total Pago Fábio: Full width e Verde -->
-                        <div class="md:col-span-3 border border-novan-green p-4 rounded-lg bg-gray-700/50">
-                            <p class="text-sm font-medium text-gray-300">Total Pago Registrado (no Período):</p>
-                            <p id="total-pago-fabio" class="text-3xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
+                        <!-- Total Pago Fábio (Recorrente) -->
+                        <div class="border border-novan-green p-4 rounded-lg bg-gray-700/50">
+                            <p class="text-sm font-medium text-gray-300">Total Pago (Recorrente):</p>
+                            <p id="total-pago-fabio" class="text-2xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
                         </div>
-                         <!-- Lucro Bruto Calculado (MANTIDO APENAS PARA EXIBIR O CÁLCULO) -->
+                        <!-- Total Pago Fábio (Serviços Extras) -->
+                        <div class="border border-novan-yellow p-4 rounded-lg bg-gray-700/50">
+                            <p class="text-sm font-medium text-gray-300">Total Pago (Serviços Extras):</p>
+                            <p id="total-pago-fabio-extra" class="text-2xl font-extrabold text-novan-yellow mt-1">R$ 0,00</p>
+                        </div>
+                        <!-- Lucro Bruto Calculado (MANTIDO OCULTO) -->
                          <div class="border border-gray-700 p-3 rounded-lg bg-gray-700/50 hidden">
                              <p class="text-xs text-gray-400">Lucro Bruto Calculado (Ref.):</p>
                              <p id="lucro-bruto-fabio" class="text-xl font-bold text-novan-green">R$ 0,00</p>
                          </div>
                     </div>
                     
-                    <!-- NOVO: Formulário de Registro Manual de Pagamento -->
-                    <h3 class="text-xl font-semibold mb-4 pt-6 mt-6 border-t border-gray-700 text-gray-100">Registro Manual de Pagamento</h3>
+                    <!-- NOVO: Seção de Registro Manual de Comissão Recorrente -->
+                    <h3 class="text-xl font-semibold mb-4 pt-6 mt-6 border-t border-gray-700 text-gray-100">Comissão 30% da Empresa (Pagamento Recorrente)</h3>
                     <form id="fabio-payment-form" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Valor Pago -->
@@ -1845,21 +1899,47 @@
                                 <input type="date" id="fabio-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                             </div>
                         </div>
-                        <!-- NOVO: Campo de Observação -->
+                        <!-- Campo de Observação -->
                          <div>
                             <label for="fabio-observacao" class="block text-sm font-medium text-gray-300">Observação / Detalhes (Opcional)</label>
                             <textarea id="fabio-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
                         </div>
 
                         <button type="submit" class="w-full py-3 px-4 bg-novan-red text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-200">
-                            Registrar Pagamento de Comissão
+                            Registrar Comissão 30% (Recorrente)
                         </button>
                     </form>
+                    
+                    <!-- NOVO: Seção de Registro Manual de Serviços Extras -->
+                    <h3 class="text-xl font-semibold mb-4 pt-6 mt-6 border-t border-gray-700 text-gray-100">Registro Manual de Pagamento (Serviços Extras)</h3>
+                    <form id="fabio-extra-payment-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Valor Pago -->
+                            <div>
+                                <label for="fabio-extra-valor-pago" class="block text-sm font-medium text-gray-300">Valor Pago (R$)</label>
+                                <input type="number" step="0.01" id="fabio-extra-valor-pago" name="valor" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Data do Pagamento -->
+                            <div>
+                                <label for="fabio-extra-data-pagamento" class="block text-sm font-medium text-gray-300">Data do Pagamento</label>
+                                <input type="date" id="fabio-extra-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                        </div>
+                        <!-- Campo de Observação -->
+                         <div>
+                            <label for="fabio-extra-observacao" class="block text-sm font-medium text-gray-300">Observação / Detalhes (Opcional)</label>
+                            <textarea id="fabio-extra-observacao" name="observacao" rows="2" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 px-4 bg-novan-yellow text-gray-900 font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-200">
+                            Registrar Pagamento de Serviço Extra
+                        </button>
+                    </form>
+
                 </div>
 
-                <!-- Historico de Recebimentos Fábio -->
-                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Recebimentos Registrados <span id="fabio-filter-period" class="text-sm font-normal text-gray-400"></span></h3>
-                <p class="text-sm text-gray-400">Exibe todas as despesas registradas na categoria "Comissão Fábio" no período do filtro.</p>
+                <!-- Historico de Recebimentos Fábio (Recorrente) -->
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Pagamentos Recorrentes <span id="fabio-filter-period" class="text-sm font-normal text-gray-400"></span></h3>
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
@@ -1872,6 +1952,24 @@
                         </thead>
                         <tbody id="fabio-historico-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
                             <tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Historico de Recebimentos Fábio (Serviços Extras) -->
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Pagamentos de Serviços Extras <span class="text-sm font-normal text-gray-400">(no Período do Filtro)</span></h3>
+                <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data do Registro</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Pago</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Observação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fabio-extra-historico-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
+                            <tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum pagamento de serviço extra registrado no período atual.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2104,7 +2202,8 @@
                                 <select id="categoria" name="categoria" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                                     <option value="" disabled selected>Selecione</option>
                                     <option value="Pessoal">Pessoal (Salários)</option>
-                                    <option value="Comissão Fábio">Comissão Fábio (30%)</option>
+                                    <option value="Comissão Fábio">Comissão Fábio (Recorrente)</option>
+                                    <option value="Comissão Fábio (Extra)">Comissão Fábio (Extra)</option>
                                     <option value="Marketing">Marketing/Publicidade</option>
                                     <option value="Software">Softwares/Serviços Cloud</option>
                                     <option value="Aluguel">Aluguel/Escritório</option>
