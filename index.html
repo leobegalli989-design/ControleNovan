@@ -81,7 +81,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, where, serverTimestamp, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Ativar logging detalhado no console para debug do Firestore
@@ -118,6 +118,10 @@
         let currentFaturaFilter = 'all'; 
         let currentClientFilter = 'all'; 
         let myChart = null;
+
+        // --- GLOBAL DATE FILTERS ---
+        let filterStartDate = null;
+        let filterEndDate = null;
         
         // Lista de serviços recorrentes
         const RECURRING_SERVICES = [
@@ -183,7 +187,7 @@
 
 
         const showActionMessage = (message, isSuccess = true) => {
-            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message') || document.getElementById('despesas-message') || document.getElementById('avulsos-message');
+            const messageEl = document.getElementById('faturas-message') || document.getElementById('client-message') || document.getElementById('despesas-message') || document.getElementById('avulsos-message') || document.getElementById('fabio-message');
             
             if (!messageEl) return;
             
@@ -201,6 +205,33 @@
             setTimeout(() => messageEl.classList.add('hidden'), 5000);
         };
 
+        // Função para verificar se a data está no período do filtro
+        const isDateInFilter = (dateTimestamp) => {
+            if (!dateTimestamp) return true; // Se não houver data, assume que está incluído
+            
+            let date;
+            if (dateTimestamp.toDate) {
+                date = dateTimestamp.toDate();
+            } else if (dateTimestamp instanceof Date) {
+                date = dateTimestamp;
+            } else {
+                return true; // Se o formato for desconhecido, não filtra
+            }
+            
+            // Verifica o início
+            if (filterStartDate && date < filterStartDate) return false;
+            
+            // Verifica o fim
+            if (filterEndDate) {
+                // Criamos uma data final no último milissegundo do dia final para comparação
+                const endOfDay = new Date(filterEndDate.getTime());
+                endOfDay.setHours(23, 59, 59, 999);
+                if (date > endOfDay) return false;
+            }
+            
+            return true;
+        };
+        
         // NOVO: Função para exibir o erro de regras de segurança
         const displayRulesError = (error, collectionName) => {
             const errorBanner = document.getElementById('rules-error-banner');
@@ -213,7 +244,7 @@
             errorBanner.innerHTML = `
                 <span class="font-bold">🚨 ERRO DE PERMISSÃO DO FIREBASE 🚨</span>
                 <p>Falha ao ler dados de <strong>${collectionName}</strong>. O erro indica que as <strong>Regras de Segurança</strong> do seu projeto Firebase estão bloqueando o acesso do usuário logado.</p>
-                <p class="mt-2 text-xs font-mono bg-red-800 p-1 rounded">Ajuste as regras do Firestore para permitir leitura e escrita para usuários autenticados nos caminhos <code>artifacts/{appId}/users/{userId}/{coleção}</code>.</p>
+                <p class="mt-2 text-xs font-mono bg-red-800 p-1 rounded">Ajuste as regras do Firestore para permitir leitura e escrita para usuários autenticados nos caminhos <code>artifacts/${appId}/users/${window.userId}/{coleção}</code>.</p>
             `;
         };
 
@@ -299,12 +330,14 @@
 
             document.getElementById('mobile-menu').classList.add('hidden');
             
-            if (view === 'faturas') {
-                setFaturaFilter('all');
-            } else if (view === 'clientes') {
-                setClientFilter('all');
+            // Atualiza o cálculo sempre que muda de tela (o Dashboard já chama no listener)
+            if (view === 'despesas') {
+                renderDespesasTable(allDespesas.filter(d => isDateInFilter(d.dataDespesa)));
             } else if (view === 'servicos-avulsos') {
-                renderServicosAvulsosTable(allServicosAvulsos);
+                renderServicosAvulsosTable(allServicosAvulsos.filter(a => isDateInFilter(a.dataServico)));
+            } else if (view === 'fabio') {
+                // A navegação para Fábio depende do cálculo do Dashboard
+                calculateDashboardTotals(); 
             }
         };
 
@@ -314,14 +347,32 @@
 
         // --- DASHBOARD & RENDER FUNCTIONS ---
 
+        // NOVO: Função para aplicar o filtro de data e recalcular tudo
+        window.applyDateFilter = () => {
+            const start = document.getElementById('filter-start-date').value;
+            const end = document.getElementById('filter-end-date').value;
+
+            filterStartDate = start ? createSafeDate(start) : null;
+            filterEndDate = end ? createSafeDate(end) : null;
+            
+            // Recalcular TUDO
+            calculateDashboardTotals();
+        };
+
         const calculateDashboardTotals = () => {
+            // Aplicar Filtro de Data em todas as coleções
+            const filteredFaturas = allFaturas.filter(f => isDateInFilter(f.vencimento));
+            const filteredDespesas = allDespesas.filter(d => isDateInFilter(d.dataDespesa));
+            const filteredAvulsos = allServicosAvulsos.filter(a => isDateInFilter(a.dataServico));
+
             let totalRecebido = 0;
             let totalAReceber = 0;
             let totalAtrasado = 0;
-            let totalDespesas = 0;
+            let outrasDespesas = 0;
+            let despesasFabioRegistradas = 0;
 
             // 1. Faturas
-            allFaturas.forEach(fatura => {
+            filteredFaturas.forEach(fatura => {
                 const { status } = getStatusDetails(fatura.status, fatura.vencimento);
                 const valor = parseFloat(fatura.valor);
                 
@@ -336,25 +387,45 @@
                 }
             });
 
-            // 2. Despesas
-            allDespesas.forEach(despesa => {
+            // 2. Despesas (Separando Fábio)
+            filteredDespesas.forEach(despesa => {
                 const valor = parseFloat(despesa.valor);
                 if (isNaN(valor)) return; 
-                totalDespesas += valor;
+                
+                if (despesa.categoria === 'Comissão Fábio') {
+                    despesasFabioRegistradas += valor;
+                } else {
+                    outrasDespesas += valor;
+                }
             });
             
-            // 3. Serviços Avulsos (Tratado como Receita Recebida)
-             allServicosAvulsos.forEach(avulso => {
+            // 3. Serviços Avulsos (Recebidos)
+             filteredAvulsos.forEach(avulso => {
                 const valor = parseFloat(avulso.valor);
                 if (isNaN(valor)) return; 
                 totalRecebido += valor; 
             });
 
+            // Totais Finais
+            const totalDespesas = outrasDespesas + despesasFabioRegistradas;
             const totalLucro = totalRecebido - totalDespesas;
+            
+            // --- CÁLCULO FÁBIO (INDICADORES) ---
+            const lucroBruto = totalRecebido - outrasDespesas;
+            // O pagamento simulado foi removido, mas o lucroBruto é mantido como referência
+
+            // Atualizar UI da aba Fabio
+            const lucroBrutoEl = document.getElementById('lucro-bruto-fabio');
+            const totalPagoFabioEl = document.getElementById('total-pago-fabio');
+            if (lucroBrutoEl) lucroBrutoEl.textContent = formatCurrency(lucroBruto);
+            if (totalPagoFabioEl) totalPagoFabioEl.textContent = formatCurrency(despesasFabioRegistradas); 
+
+
+            // --- ATUALIZAÇÃO DASHBOARD ---
             const lucroEl = document.getElementById('total-lucro');
             const lucroCard = document.getElementById('lucro-card');
 
-            // Determine colors - LÓGICA REVISADA: Lucro Positivo (Verde), Lucro Negativo (Vermelho), Lucro Zero (Neutro/Cinza). Removida cor Roxo/Purple.
+            // Determine colors - Lucro Positivo (Verde), Lucro Negativo (Vermelho), Lucro Zero (Neutro/Cinza).
             let lucroBorderColor = 'border-gray-500'; 
             let lucroTextColor = 'text-gray-400';    
 
@@ -364,10 +435,6 @@
             } else if (totalLucro < 0) {
                 lucroBorderColor = 'border-novan-red';
                 lucroTextColor = 'text-novan-red';
-            } else {
-                 // Lucro zero (totalLucro === 0)
-                 lucroBorderColor = 'border-gray-500'; 
-                 lucroTextColor = 'text-gray-400';
             }
             
             // Update summary cards
@@ -385,6 +452,9 @@
             lucroEl.classList.remove('text-novan-green', 'text-novan-red', 'text-novan-purple', 'text-gray-400');
             lucroEl.classList.add(lucroTextColor);
             
+            // NOVO: Atualiza o card de comissão de Fábio no Dashboard
+            document.getElementById('total-comissao-fabio').textContent = formatCurrency(despesasFabioRegistradas); 
+            
             // Overdue alert
             const overdueAlert = document.getElementById('overdue-alert');
             if (totalAtrasado > 0) {
@@ -394,35 +464,74 @@
                 overdueAlert.classList.add('hidden');
             }
 
-            // Update Chart.js
+            // Update Chart.js (Bar Chart Implementation)
             const ctx = document.getElementById('financeChart').getContext('2d');
             if (myChart) myChart.destroy();
 
             myChart = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar', // Alterado para Bar Chart
                 data: {
-                    labels: ['Recebido', 'A Receber', 'Atrasado'],
-                    datasets: [{
-                        data: [totalRecebido, totalAReceber, totalAtrasado], 
-                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-                        hoverOffset: 4
-                    }]
+                    labels: ['Receitas e Cobranças'], // Um único label para o grupo de barras
+                    datasets: [
+                        {
+                            label: 'Recebido',
+                            data: [totalRecebido], 
+                            backgroundColor: '#10B981', // novan-green
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'A Receber',
+                            data: [totalAReceber],
+                            backgroundColor: '#F59E0B', // novan-yellow
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'Atrasado',
+                            data: [totalAtrasado],
+                            backgroundColor: '#EF4444', // novan-red
+                            borderRadius: 4,
+                        }
+                    ]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
                     plugins: { 
                         legend: { position: 'bottom', labels: { color: 'white' } }, 
-                        tooltip: { callbacks: { label: (c) => `${c.label}: ${formatCurrency(c.parsed)}` } } 
-                    } 
+                        tooltip: { 
+                            callbacks: { 
+                                label: (c) => `${c.dataset.label}: ${formatCurrency(c.parsed.y)}` 
+                            } 
+                        } 
+                    },
+                    scales: {
+                        x: {
+                            stacked: false, 
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            ticks: { 
+                                color: 'white',
+                                callback: function(value, index, ticks) {
+                                    return formatCurrency(value); // Formata rótulos do eixo Y
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
                 }
             });
             
-            // Re-render tables to reflect latest data and statuses
-            renderFaturasTable(allFaturas);
-            renderClientesTable(allClientesArray);
-            renderDespesasTable(allDespesas);
-            renderServicosAvulsosTable(allServicosAvulsos); 
+            // Re-render tables to reflect latest data and statuses and filters
+            // Passa os arrays filtrados para a renderização das tabelas
+            renderFaturasTable(filteredFaturas);
+            renderClientesTable(allClientesArray); // Clientes não são filtrados por data
+            renderDespesasTable(filteredDespesas);
+            renderServicosAvulsosTable(filteredAvulsos); 
+            renderFabioView(filteredDespesas.filter(d => d.categoria === 'Comissão Fábio')); // Histórico de Pagamentos Fábio
         };
 
         // --- AUTHENTICATION ---
@@ -823,7 +932,7 @@
                 activeBtn.classList.add('bg-novan-purple', 'text-white');
             }
 
-            renderFaturasTable(allFaturas);
+            renderFaturasTable(allFaturas.filter(f => isDateInFilter(f.vencimento))); // Re-renderiza com filtro de data do dashboard
         };
 
 
@@ -836,7 +945,7 @@
                 return acc;
             }, {});
 
-            let filteredFaturas = faturas;
+            let filteredFaturas = faturas; // Já vem pré-filtrada por data
             if (currentFaturaFilter !== 'all') {
                 filteredFaturas = filteredFaturas.filter(fatura => {
                     const { status } = getStatusDetails(fatura.status, fatura.vencimento);
@@ -941,8 +1050,28 @@
             }
             try {
                 const docRef = doc(window.db, getCollectionPath('faturas'), faturaId);
-                await updateDoc(docRef, { status: newStatus });
-                showActionMessage('Status da fatura atualizado com sucesso!', true);
+                
+                // Se o status for Pago, buscamos os dados para gerar a próxima fatura
+                if (newStatus === 'Pago') {
+                    const faturaDoc = await getDoc(docRef);
+                    if (!faturaDoc.exists()) {
+                        throw new Error("Fatura não encontrada para atualização.");
+                    }
+                    const faturaData = faturaDoc.data();
+
+                    // 1. Atualiza o status
+                    await updateDoc(docRef, { status: newStatus });
+
+                    // 2. Gera a próxima fatura automaticamente
+                    await generateNextFatura(faturaData.clienteId, faturaData.valor, faturaData.vencimento);
+
+                    showActionMessage('Status da fatura atualizado para Pago e próxima fatura gerada automaticamente!', true);
+                } else {
+                    // Se não for Pago, apenas atualiza
+                    await updateDoc(docRef, { status: newStatus });
+                    showActionMessage('Status da fatura atualizado com sucesso!', true);
+                }
+
             } catch (e) {
                 showActionMessage(`Erro ao atualizar status: ${e.message}`, false);
             }
@@ -956,8 +1085,27 @@
             try {
                 const lastDate = (lastDueDate && lastDueDate.toDate) ? lastDueDate.toDate() : createSafeDate(new Date().toISOString().split('T')[0]);
                 
+                const originalDay = lastDate.getDate();
+                
+                // Inicia a data no dia 1 do mês atual
                 const nextVencimento = new Date(lastDate);
+                nextVencimento.setDate(1); 
+                
+                // Avança para o mês seguinte (garante que caia no mês certo)
                 nextVencimento.setMonth(nextVencimento.getMonth() + 1); 
+                
+                // Tenta setar o dia original
+                nextVencimento.setDate(originalDay);
+                
+                // Se, após setDate, o mês rolou para o mês seguinte (overflow, ex: setando dia 31 em Fev -> 3 Mar), 
+                // ajustamos para o último dia do mês desejado, mantendo a regra de "mesmo dia".
+                // Se o mês resultante for diferente do mês que esperávamos (targetMonth), ajustamos para o último dia do mês desejado.
+                const targetMonth = (lastDate.getMonth() + 1) % 12;
+                if (nextVencimento.getMonth() !== targetMonth) {
+                    // Isso significa que o mês não tem o dia original (ex: 31 Fev). 
+                    // Setamos para o último dia do mês de destino.
+                    nextVencimento.setDate(0); 
+                }
                 
                 const faturasRef = collection(window.db, getCollectionPath('faturas'));
                 await addDoc(faturasRef, {
@@ -1031,12 +1179,10 @@
             const tableBody = document.getElementById('despesas-table-body');
             tableBody.innerHTML = '';
             
-            let totalDespesas = despesas.reduce((sum, d) => sum + parseFloat(d.valor || 0), 0);
-            const summaryEl = document.getElementById('total-despesas-summary');
-            if(summaryEl) summaryEl.textContent = formatCurrency(totalDespesas); 
-
+            // O totalDespesas-summary não é mais atualizado aqui, mas sim no calculateDashboardTotals
+            
             if (despesas.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada no período atual.</td></tr>`;
                 return;
             }
             
@@ -1106,7 +1252,7 @@
 
                 form.reset();
                 showActionMessage(`Serviço avulso "${tipoServico} - ${clienteAvulso}" registrado como recebido!`, true);
-                renderServicosAvulsosTable(allServicosAvulsos);
+                renderServicosAvulsosTable(allServicosAvulsos.filter(a => isDateInFilter(a.dataServico)));
 
             } catch (e) {
                 console.error("Erro ao adicionar serviço avulso:", e);
@@ -1136,7 +1282,7 @@
             tableBody.innerHTML = '';
             
             if (avulsos.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado no período atual.</td></tr>`;
                 return;
             }
             
@@ -1174,14 +1320,80 @@
                 });
             });
         }
+        
+        // --- FÁBIO MANAGEMENT (30% COMMISSION) ---
+
+        // NOVO: Registra o pagamento MANUALMENTE como despesa
+        async function handleNewFabioPaymentManual(event) {
+            event.preventDefault(); 
+            if (!window.db || !window.userId) {
+                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+                return;
+            }
+            const form = document.getElementById('fabio-payment-form');
+            const valor = parseFloat(form.valor.value);
+            const dataDespesa = createSafeDate(form.dataPagamento.value); 
+
+            if (isNaN(valor) || valor <= 0 || isNaN(dataDespesa.getTime())) {
+                showActionMessage('Preencha o valor e a data corretamente.', false);
+                return;
+            }
+
+            try {
+                const despesasRef = collection(window.db, getCollectionPath('despesas'));
+                
+                await addDoc(despesasRef, {
+                    descricao: `Pagamento de Comissão Fábio (Manual)`,
+                    categoria: 'Comissão Fábio', // Categoria fixa para rastreamento
+                    valor: valor,
+                    dataDespesa: dataDespesa,
+                    detalhes: `Registro manual de pagamento de comissão.`,
+                    criadoEm: serverTimestamp()
+                });
+
+                form.reset();
+                showActionMessage(`Pagamento de ${formatCurrency(valor)} registrado para Fábio com sucesso!`, true);
+
+            } catch (e) {
+                console.error("Erro ao registrar pagamento Fábio:", e);
+                showActionMessage(`ERRO ao registrar pagamento: ${e.message}`, false);
+            }
+        }
+        window.handleNewFabioPaymentManual = handleNewFabioPaymentManual;
+
+
+        // NOVO: Renderiza a tabela de histórico de pagamentos de Fábio
+        function renderFabioView(pagamentosFabio) {
+            const tableBody = document.getElementById('fabio-historico-body');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+
+            if (pagamentosFabio.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>`;
+                return;
+            }
+
+            pagamentosFabio.sort((a, b) => {
+                const dateA = a.dataDespesa && a.dataDespesa.toDate ? a.dataDespesa.toDate().getTime() : 0;
+                const dateB = b.dataDespesa && b.dataDespesa.toDate ? b.dataDespesa.toDate().getTime() : 0;
+                return dateB - dateA;
+            });
+
+            pagamentosFabio.forEach(pagamento => {
+                const row = tableBody.insertRow();
+                row.className = 'bg-gray-800 border-b border-gray-700 transition duration-150';
+
+                row.insertCell().textContent = formatDate(pagamento.dataDespesa);
+                row.insertCell().textContent = pagamento.descricao || 'Comissão Fábio'; 
+                row.insertCell().textContent = formatCurrency(pagamento.valor);
+            });
+        }
 
 
         // --- APPLICATION INITIALIZATION ---
 
         async function initApp() {
             if (!window.auth) return;
-
-            // Removida setPersistence inicial para que handleAuth gerencie a persistência
             
             // 2. Setup Auth State Listener (handles UI toggle once a user is found/logged)
             onAuthStateChanged(window.auth, (user) => {
@@ -1216,11 +1428,27 @@
                  document.getElementById('expense-form').addEventListener('submit', handleNewExpense);
                  document.getElementById('manual-fatura-form').addEventListener('submit', handleNewFaturaManual); 
                  document.getElementById('avulso-form').addEventListener('submit', handleNewAvulso); 
+                 
+                 // Listener do novo formulário de Fábio
+                 document.getElementById('fabio-payment-form').addEventListener('submit', handleNewFabioPaymentManual);
+                 
+                 // Inicialização principal
                  initApp();
                  
                  // Adiciona listeners para atualizar o texto do dropdown de serviços
                  document.querySelectorAll('#servicos-dropdown input[type="checkbox"]').forEach(checkbox => {
                      checkbox.addEventListener('change', updateServicosToggleText);
+                 });
+                 
+                 // Adiciona listeners para os filtros de data no dashboard
+                 document.getElementById('filter-start-date').addEventListener('change', applyDateFilter);
+                 document.getElementById('filter-end-date').addEventListener('change', applyDateFilter);
+                 document.getElementById('clear-date-filter-btn').addEventListener('click', () => {
+                      document.getElementById('filter-start-date').value = '';
+                      document.getElementById('filter-end-date').value = '';
+                      filterStartDate = null;
+                      filterEndDate = null;
+                      calculateDashboardTotals();
                  });
              }
         });
@@ -1304,9 +1532,13 @@
                     <button id="menu-despesas" onclick="navigateTo('despesas')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
                         <span class="mr-3">💸</span> Despesas
                     </button>
-                     <!-- NOVO BOTÃO DE SERVIÇOS AVULSOS -->
+                     <!-- Botão Fábio -->
+                    <button id="menu-fabio" onclick="navigateTo('fabio')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
+                        <span class="mr-3">⭐</span> Fábio (Comissão)
+                    </button>
+                     <!-- Botão Serviços Avulsos -->
                     <button id="menu-servicos-avulsos" onclick="navigateTo('servicos-avulsos')" class="menu-item flex items-center w-full p-3 rounded-xl transition duration-150 text-gray-300 hover:bg-gray-700">
-                        <span class="mr-3">⭐</span> Serviços Avulsos
+                        <span class="mr-3">🛠️</span> Serviços Avulsos
                     </button>
                 </nav>
                 
@@ -1344,8 +1576,10 @@
                         <button onclick="navigateTo('clientes')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">👤 Clientes</button>
                         <button onclick="navigateTo('faturas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🧾 Faturas</button>
                         <button onclick="navigateTo('despesas')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">💸 Despesas</button>
-                        <!-- NOVO BOTÃO MOBILE -->
-                        <button onclick="navigateTo('servicos-avulsos')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">⭐ Serviços Avulsos</button>
+                        <!-- Botão Fábio Mobile -->
+                        <button onclick="navigateTo('fabio')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">⭐ Fábio (Comissão)</button>
+                        <!-- Botão Serviços Avulsos Mobile -->
+                        <button onclick="navigateTo('servicos-avulsos')" class="menu-item block w-full text-left p-3 rounded-lg text-gray-300 hover:bg-gray-600 mb-2 transition duration-150">🛠️ Serviços Avulsos</button>
                         <button onclick="logout()" class="block w-full text-left p-3 rounded-lg text-red-300 bg-red-900 hover:bg-red-700 transition duration-150">🚪 Sair</button>
                     </nav>
             </header>
@@ -1358,6 +1592,24 @@
             <!-- ---------------------- VIEW: DASHBOARD ---------------------- -->
             <div id="view-dashboard" class="app-view space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Dashboard Financeiro</h2>
+
+                <!-- NOVO: FILTRO POR MÊS E DIA -->
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-yellow transition duration-300">
+                     <h3 class="text-lg font-semibold mb-3 text-gray-100">Filtrar por Período</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="filter-start-date" class="block text-sm font-medium text-gray-300">Data Inicial</label>
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                        </div>
+                        <div>
+                            <label for="filter-end-date" class="block text-sm font-medium text-gray-300">Data Final</label>
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white transition duration-150">
+                        </div>
+                        <button id="clear-date-filter-btn" class="w-full py-2 px-4 bg-gray-700 text-gray-100 font-semibold rounded-lg hover:bg-gray-600 transition duration-200">
+                             Limpar Filtro
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Cartões de Resumo Financeiro -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1383,12 +1635,17 @@
                     </div>
                 </div>
 
-                <!-- Cartão de Lucro Líquido (Destaque) -->
-                <div class="grid grid-cols-1">
+                <!-- Cartão de Lucro Líquido (Destaque) e Comissão Fábio -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="lucro-card" class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-purple transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
-                        <p class="text-lg font-medium text-gray-300">Lucro Líquido</p>
+                        <p class="text-lg font-medium text-gray-300">Lucro Líquido (Final)</p>
                         <!-- A classe de cor do texto é removida e adicionada dinamicamente pelo JS -->
                         <p id="total-lucro" class="text-3xl font-extrabold mt-2 text-novan-purple">R$ 0,00</p>
+                    </div>
+                    <!-- NOVO: Cartão de Comissão Fábio no Dashboard -->
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-green transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
+                        <p class="text-lg font-medium text-gray-300">Comissão Paga a Fábio (No Período)</p>
+                        <p id="total-comissao-fabio" class="text-3xl font-extrabold mt-2 text-novan-green">R$ 0,00</p>
                     </div>
                 </div>
 
@@ -1401,6 +1658,70 @@
                 </div>
             </div>
 
+            <!-- ---------------------- VIEW: FÁBIO ---------------------- -->
+            <div id="view-fabio" class="app-view hidden space-y-8">
+                <h2 class="text-3xl font-bold text-gray-100">Comissão Fábio</h2>
+                
+                <div id="fabio-message" class="hidden p-3 mb-4 rounded-lg text-sm bg-green-100 text-novan-green"></div>
+
+                <!-- Resumo de Pagamentos e Registro Manual (AGORA SÓ MOSTRA O TOTAL PAGO) -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-novan-purple">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-100">Resumo de Pagamentos e Registro Manual</h3>
+                    <p class="text-sm text-gray-400 mb-6">Esta seção exibe o total das comissões registradas no período de filtro atual.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Total Pago Fábio: Full width e Verde -->
+                        <div class="md:col-span-3 border border-novan-green p-4 rounded-lg bg-gray-700/50">
+                            <p class="text-sm font-medium text-gray-300">Total Pago Registrado (no Período):</p>
+                            <p id="total-pago-fabio" class="text-3xl font-extrabold text-novan-green mt-1">R$ 0,00</p>
+                        </div>
+                         <!-- Lucro Bruto Calculado (MANTIDO APENAS PARA EXIBIR O CÁLCULO) -->
+                         <div class="border border-gray-700 p-3 rounded-lg bg-gray-700/50 hidden">
+                             <p class="text-xs text-gray-400">Lucro Bruto Calculado (Ref.):</p>
+                             <p id="lucro-bruto-fabio" class="text-xl font-bold text-novan-green">R$ 0,00</p>
+                         </div>
+                    </div>
+                    
+                    <!-- NOVO: Formulário de Registro Manual de Pagamento -->
+                    <h3 class="text-xl font-semibold mb-4 pt-6 mt-6 border-t border-gray-700 text-gray-100">Registro Manual de Pagamento</h3>
+                    <form id="fabio-payment-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Valor Pago -->
+                            <div>
+                                <label for="fabio-valor-pago" class="block text-sm font-medium text-gray-300">Valor Pago (R$)</label>
+                                <input type="number" step="0.01" id="fabio-valor-pago" name="valor" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                            <!-- Data do Pagamento -->
+                            <div>
+                                <label for="fabio-data-pagamento" class="block text-sm font-medium text-gray-300">Data do Pagamento</label>
+                                <input type="date" id="fabio-data-pagamento" name="dataPagamento" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-3 px-4 bg-novan-red text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-200">
+                            Registrar Pagamento de Comissão
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Historico de Recebimentos Fábio -->
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Recebimentos Registrados</h3>
+                <p class="text-sm text-gray-400">Exibe todas as despesas registradas na categoria "Comissão Fábio" no período do filtro.</p>
+                <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data do Registro</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
+                                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor Pago</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fabio-historico-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
+                            <tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum pagamento registrado no período atual.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
             <!-- ---------------------- VIEW: CLIENTES ---------------------- -->
             <div id="view-clientes" class="app-view hidden space-y-8">
                 <h2 class="text-3xl font-bold text-gray-100">Cadastro e Gestão de Clientes</h2>
@@ -1589,7 +1910,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <!-- Total de Despesas -->
                     <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-novan-red transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.02]">
-                        <p class="text-sm font-medium text-gray-300">Total de Despesas (💸)</p>
+                        <p class="text-sm font-medium text-gray-300">Total de Despesas (💸) (No Período)</p>
                         <p id="total-despesas-summary" class="text-xl font-extrabold text-novan-red mt-1">R$ 0,00</p>
                     </div>
                 </div>
@@ -1610,6 +1931,7 @@
                                 <select id="categoria" name="categoria" class="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-novan-purple focus:border-novan-purple bg-gray-700 text-white transition duration-150" required>
                                     <option value="" disabled selected>Selecione</option>
                                     <option value="Pessoal">Pessoal (Salários)</option>
+                                    <option value="Comissão Fábio">Comissão Fábio (30%)</option>
                                     <option value="Marketing">Marketing/Publicidade</option>
                                     <option value="Software">Softwares/Serviços Cloud</option>
                                     <option value="Aluguel">Aluguel/Escritório</option>
@@ -1635,7 +1957,7 @@
                 </div>
                 
                 <!-- Tabela de Despesas -->
-                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Despesas</h3>
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Despesas (No Período)</h3>
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
@@ -1648,7 +1970,7 @@
                             </tr>
                         </thead>
                         <tbody id="despesas-table-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
-                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada.</td></tr>
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhuma despesa registrada no período atual.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1701,7 +2023,7 @@
                 </div>
                 
                 <!-- Tabela de Serviços Avulsos -->
-                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Receitas Avulsas</h3>
+                <h3 class="text-2xl font-bold text-gray-100 pt-4">Histórico de Receitas Avulsas (No Período)</h3>
                 <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
@@ -1714,7 +2036,7 @@
                             </tr>
                         </thead>
                         <tbody id="avulsos-table-body" class="divide-y divide-gray-700 text-gray-100 text-xs">
-                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado.</td></tr>
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum serviço avulso registrado no período atual.</td></tr>
                         </tbody>
                     </table>
                 </div>
