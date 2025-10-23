@@ -123,6 +123,9 @@
         let filterStartDate = null;
         let filterEndDate = null;
         
+        // Variável global para armazenar a ação de confirmação pendente
+        let pendingConfirmAction = null;
+
         // Lista de serviços recorrentes
         const RECURRING_SERVICES = [
             "Tráfego Pago Meta", 
@@ -247,7 +250,28 @@
                 <p class="mt-2 text-xs font-mono bg-red-800 p-1 rounded">Ajuste as regras do Firestore para permitir leitura e escrita para usuários autenticados nos caminhos <code>artifacts/${appId}/users/${window.userId}/{coleção}</code>.</p>
             `;
         };
+        
+        // --- MODAL DE CONFIRMAÇÃO (NOVO) ---
 
+        window.showConfirmModal = (message, actionCallback) => {
+            pendingConfirmAction = actionCallback;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('confirmation-modal').classList.remove('hidden');
+        };
+
+        window.confirmAction = () => {
+            if (pendingConfirmAction) {
+                pendingConfirmAction();
+            }
+            window.closeModal();
+        };
+
+        window.closeModal = () => {
+            document.getElementById('confirmation-modal').classList.add('hidden');
+            pendingConfirmAction = null;
+        };
+
+        // --- FIM MODAL DE CONFIRMAÇÃO ---
 
         const getStatusDetails = (status, vencimentoDate) => {
             const now = new Date();
@@ -752,33 +776,44 @@
             }
         };
         
-        window.deleteClient = async (clientId) => {
-            if (!window.db || !window.userId) {
-                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+        // NOVO: Função para deletar cliente (chama modal)
+        window.deleteClient = (clientId) => {
+            const client = allClientesArray.find(c => c.id === clientId);
+            if (!client) {
+                showActionMessage('Cliente não encontrado.', false);
                 return;
             }
-            const faturasPath = getCollectionPath('faturas');
-            try {
-                // 1. Delete all associated Faturas 
-                const faturasRef = collection(window.db, faturasPath);
-                const q = query(faturasRef, where("clienteId", "==", clientId));
-                
-                const snapshot = await getDocs(q); 
-                let removedFaturasCount = 0;
-                for (const faturaDoc of snapshot.docs) {
-                    await deleteDoc(doc(window.db, faturasPath, faturaDoc.id));
-                    removedFaturasCount++;
-                }
+            
+            showConfirmModal(
+                `Tem certeza que deseja excluir o cliente "${client.nome}" e TODAS as faturas associadas? Esta ação é irreversível.`,
+                async () => {
+                    const faturasPath = getCollectionPath('faturas');
+                    if (!window.db || !window.userId || !faturasPath) return;
 
-                // 2. Delete Client document
-                const clientDocRef = doc(window.db, getCollectionPath('clientes'), clientId);
-                await deleteDoc(clientDocRef);
-                
-                showActionMessage(`Cadastro e ${removedFaturasCount} faturas removidos com sucesso.`, true);
-            } catch (e) {
-                showActionMessage(`Erro ao excluir cadastro: ${e.message}`, false);
-            }
-        }
+                    try {
+                        // 1. Delete all associated Faturas 
+                        const faturasRef = collection(window.db, faturasPath);
+                        const q = query(faturasRef, where("clienteId", "==", clientId));
+                        
+                        const snapshot = await getDocs(q); 
+                        let removedFaturasCount = 0;
+                        for (const faturaDoc of snapshot.docs) {
+                            await deleteDoc(doc(window.db, faturasPath, faturaDoc.id));
+                            removedFaturasCount++;
+                        }
+
+                        // 2. Delete Client document
+                        const clientDocRef = doc(window.db, getCollectionPath('clientes'), clientId);
+                        await deleteDoc(clientDocRef);
+                        
+                        showActionMessage(`Cadastro e ${removedFaturasCount} faturas removidos com sucesso.`, true);
+                    } catch (e) {
+                        showActionMessage(`Erro ao excluir cadastro: ${e.message}`, false);
+                    }
+                }
+            );
+        };
+
 
         const renderClientesTable = (clientes) => {
             const tableBody = document.getElementById('clientes-table-body');
@@ -904,19 +939,30 @@
         }
         window.handleNewFaturaManual = handleNewFaturaManual;
         
-        window.deleteFatura = async (faturaId) => {
-            if (!window.db || !window.userId) {
-                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+        // NOVO: Função para deletar fatura (chama modal)
+        window.deleteFatura = (faturaId) => {
+            const fatura = allFaturas.find(f => f.id === faturaId);
+            const client = allClientesArray.find(c => c.id === fatura?.clienteId) || { nome: 'Cliente Desconhecido' };
+
+            if (!fatura) {
+                showActionMessage('Fatura não encontrada.', false);
                 return;
             }
-            try {
-                const docRef = doc(window.db, getCollectionPath('faturas'), faturaId);
-                await deleteDoc(docRef);
-                showActionMessage('Fatura excluída com sucesso!');
-            } catch (e) {
-                showActionMessage(`Erro ao excluir fatura: ${e.message}`, false);
-            }
-        }
+            
+            showConfirmModal(
+                `Tem certeza que deseja excluir a fatura de ${formatCurrency(fatura.valor)} do cliente "${client.nome}"? Esta ação é irreversível.`,
+                async () => {
+                    if (!window.db || !window.userId) return;
+                    try {
+                        const docRef = doc(window.db, getCollectionPath('faturas'), faturaId);
+                        await deleteDoc(docRef);
+                        showActionMessage('Fatura excluída com sucesso!', true);
+                    } catch (e) {
+                        showActionMessage(`Erro ao excluir fatura: ${e.message}`, false);
+                    }
+                }
+            );
+        };
         
         window.setFaturaFilter = (filter) => {
             currentFaturaFilter = filter;
@@ -1180,20 +1226,28 @@
         }
         window.handleNewExpense = handleNewExpense; 
         
-        async function deleteDespesa(despesaId) {
-            if (!window.db || !window.userId) {
-                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+        // NOVO: Função para deletar despesa (chama modal)
+        window.deleteDespesa = (despesaId) => {
+            const despesa = allDespesas.find(d => d.id === despesaId);
+            if (!despesa) {
+                showActionMessage('Despesa não encontrada.', false);
                 return;
             }
-            try {
-                const docRef = doc(window.db, getCollectionPath('despesas'), despesaId);
-                await deleteDoc(docRef);
-                showActionMessage('Despesa excluída com sucesso!');
-            } catch (e) {
-                showActionMessage(`Erro ao excluir despesa: ${e.message}`, false);
-            }
-        }
-        window.deleteDespesa = deleteDespesa; 
+            
+            showConfirmModal(
+                `Tem certeza que deseja excluir a despesa de ${formatCurrency(despesa.valor)} ("${despesa.descricao}")? Esta ação é irreversível.`,
+                async () => {
+                    if (!window.db || !window.userId) return;
+                    try {
+                        const docRef = doc(window.db, getCollectionPath('despesas'), despesaId);
+                        await deleteDoc(docRef);
+                        showActionMessage('Despesa excluída com sucesso!', true);
+                    } catch (e) {
+                        showActionMessage(`Erro ao excluir despesa: ${e.message}`, false);
+                    }
+                }
+            );
+        };
         
         function renderDespesasTable(despesas) {
             const tableBody = document.getElementById('despesas-table-body');
@@ -1281,20 +1335,28 @@
         }
         window.handleNewAvulso = handleNewAvulso; 
 
-        async function deleteAvulso(avulsoId) {
-            if (!window.db || !window.userId) {
-                showActionMessage('Você não está autenticado para realizar esta ação.', false);
+        // NOVO: Função para deletar serviço avulso (chama modal)
+        window.deleteAvulso = (avulsoId) => {
+            const avulso = allServicosAvulsos.find(a => a.id === avulsoId);
+            if (!avulso) {
+                showActionMessage('Serviço avulso não encontrado.', false);
                 return;
             }
-            try {
-                const docRef = doc(window.db, getCollectionPath('servicos_avulsos'), avulsoId);
-                await deleteDoc(docRef);
-                showActionMessage('Serviço avulso excluído com sucesso!');
-            } catch (e) {
-                showActionMessage(`Erro ao excluir serviço avulso: ${e.message}`, false);
-            }
-        }
-        window.deleteAvulso = deleteAvulso; 
+            
+            showConfirmModal(
+                `Tem certeza que deseja excluir o registro de receita avulsa de ${formatCurrency(avulso.valor)} ("${avulso.tipoServico}")? Esta ação é irreversível.`,
+                async () => {
+                    if (!window.db || !window.userId) return;
+                    try {
+                        const docRef = doc(window.db, getCollectionPath('servicos_avulsos'), avulsoId);
+                        await deleteDoc(docRef);
+                        showActionMessage('Serviço avulso excluído com sucesso!', true);
+                    } catch (e) {
+                        showActionMessage(`Erro ao excluir serviço avulso: ${e.message}`, false);
+                    }
+                }
+            );
+        };
         
         function renderServicosAvulsosTable(avulsos) {
             const tableBody = document.getElementById('avulsos-table-body');
@@ -2143,6 +2205,23 @@
             
         </main>
     </div>
+    
+    <!-- ---------------------- MODAL DE CONFIRMAÇÃO (DELETE) ---------------------- -->
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300" aria-modal="true" role="dialog">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-transform duration-300 fade-in">
+            <h3 class="text-xl font-bold text-novan-red mb-4 border-b border-gray-700 pb-2">⚠️ Confirmação de Exclusão</h3>
+            <p id="modal-message" class="text-gray-300 mb-6">Tem certeza que deseja executar esta ação?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeModal()" class="py-2 px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition duration-150 font-semibold">
+                    Cancelar
+                </button>
+                <button onclick="confirmAction()" class="py-2 px-4 bg-novan-red text-white rounded-lg hover:bg-red-600 transition duration-150 font-semibold shadow-md">
+                    Confirmar Exclusão
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ---------------------- FIM MODAL ---------------------- -->
 
 </body>
 </html>
