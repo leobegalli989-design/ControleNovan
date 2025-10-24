@@ -723,6 +723,7 @@
 
         // Notificação (Substitui alert/confirm não destrutivo)
         window.showNotification = function(message, isError = false) { // EXPOSED
+            console.log("Notificação exibida:", message, isError); // LOG DE DIAGNÓSTICO
             const container = document.getElementById('notification-container');
             const notification = document.createElement('div');
             notification.className = `card p-4 shadow-lg flex items-center space-x-3 transition-all duration-300 transform translate-x-full opacity-0 ${isError ? 'bg-red-800 border-red-400' : 'bg-green-800 border-green-400'} border-l-4`;
@@ -1420,29 +1421,37 @@
         
         window.updateInvoiceStatus = async function(id, newStatus) { // EXPOSED
             const invoiceRef = doc(db, COLLECTIONS.invoices, id);
+            // Busca a fatura no estado atualizado global (invoices)
             const invoiceToUpdate = invoices.find(f => f.id === id);
             
-            if (!invoiceToUpdate) return;
+            if (!invoiceToUpdate) {
+                console.error("Fatura não encontrada para atualização:", id);
+                window.showNotification('Erro interno: Fatura não encontrada.', true);
+                return;
+            }
             
             const oldStatus = invoiceToUpdate.status;
+            console.log(`Tentando atualizar fatura ${id}. Status antigo: ${oldStatus}, Novo status: ${newStatus}`); // LOG DE DIAGNÓSTICO
 
             try {
                 // 1. Atualiza o status (dispara o onSnapshot)
                 await setDoc(invoiceRef, { status: newStatus }, { merge: true });
+                console.log(`Status da fatura ${id} atualizado no Firestore.`); // LOG DE DIAGNÓSTICO
 
                 // 2. Se mudou para Pago, gera a próxima
                 if (newStatus === 'Pago' && oldStatus !== 'Pago') {
                     const nextDueDateString = getNextMonthDate(invoiceToUpdate.dueDate);
+                    console.log(`Gerando próxima fatura para: ${nextDueDateString}`); // LOG DE DIAGNÓSTICO
                     
-                    // Nota: A geração da próxima fatura precisa ser AGUARDADA para garantir a ordem
+                    // A nova fatura deve ser gerada AGUARDANDO sua persistência no Firestore.
                     await generateInvoice(invoiceToUpdate.clientId, invoiceToUpdate.value, nextDueDateString, 'A Receber', true);
-                    window.showNotification('Fatura paga e próxima fatura gerada automaticamente (Firestore)!', false);
+                    window.showNotification('Fatura paga e próxima fatura gerada automaticamente!', false);
                 } else {
                     window.showNotification(`Status da fatura atualizado para ${newStatus}.`);
                 }
                 
             } catch (error) {
-                console.error("Erro ao atualizar status:", error);
+                console.error("Erro ao atualizar status ou gerar próxima fatura:", error); // LOG MELHORADO
                 window.showNotification('Erro ao atualizar status no Firestore.', true);
             }
         }
