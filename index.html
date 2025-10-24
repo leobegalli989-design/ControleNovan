@@ -578,16 +578,16 @@
         // =================================================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, getDocs, query, where, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Configuração Firebase fornecida pelo usuário
         const FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCgC16N_NRnhK5yMh9I_ue7ChZjpAGBHtw",
-            authDomain: "controloenovan.firebaseapp.com",
-            projectId: "controloenovan",
-            storageBucket: "controloenovan.firebasestorage.app",
-            messagingSenderId: "879490791747",
-            appId: "1:879490791747:web:17bb9b65b410557d32d7f6"
+            apiKey: "AIzaSyCTj0St5odkB_t_7_gpbOAcAVDkoXWCFDk",
+            authDomain: "novangestao.firebaseapp.com",
+            projectId: "novangestao",
+            storageBucket: "novangestao.firebasestorage.app",
+            messagingSenderId: "740883145809",
+            appId: "1:740883145809:web:7087959104b24526028470"
         };
         
         const app = initializeApp(FIREBASE_CONFIG);
@@ -826,17 +826,12 @@
                 loadDataForForms();
             } else {
                 isAuthReady = false;
-                // Tenta logar anonimamente se for a primeira vez
-                if (!localStorage.getItem('isAuthenticated')) {
-                     signInAnonymously(auth).catch(error => {
-                        console.error("Erro ao logar anonimamente:", error);
-                    });
-                } else {
-                    // Se o user deslogou, ou a sessão expirou
-                    localStorage.removeItem('isAuthenticated');
-                    document.getElementById('login-view').classList.remove('hidden');
-                    document.getElementById('dashboard-view').classList.add('hidden');
-                }
+                // REMOVIDA A TENTATIVA AUTOMÁTICA DE LOGIN ANÔNIMO para evitar o erro 'admin-restricted-operation'
+
+                // Se o user deslogou ou não está logado no Firebase, mostramos a tela de login.
+                localStorage.removeItem('isAuthenticated');
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('dashboard-view').classList.add('hidden');
             }
         });
 
@@ -848,10 +843,20 @@
             
             if (email === LOGIN_EMAIL && password === LOGIN_PASS) {
                 loginError.classList.add('hidden');
-                // A navegação real ocorre dentro do onAuthStateChanged
-                // O estado de 'isAuthenticated' forçará a exibição do dashboard
+                
+                // 1. Marca como autenticado visualmente.
                 localStorage.setItem('isAuthenticated', 'true'); 
-                location.reload(); // Recarrega para acionar o onAuthStateChanged
+
+                // 2. Tenta logar no Firebase Anonimamente para iniciar a sessão e persistência.
+                signInAnonymously(auth).then(() => {
+                    // Se deu certo, o onAuthStateChanged cuida da navegação.
+                }).catch(error => {
+                    console.error("Erro ao tentar signInAnonymously após Login Simulado:", error);
+                    showNotification('Erro ao conectar com o Firebase (Autenticação Anônima). Verifique as configurações no Console.', true);
+                    // Força um reload para que o onAuthStateChanged mostre o dashboard (mesmo sem auth, para demonstração)
+                    location.reload(); 
+                });
+
             } else {
                 loginError.classList.remove('hidden');
             }
@@ -989,8 +994,8 @@
             document.getElementById('ai-insight-result').innerHTML = `Aguardando a geração de insights financeiros pela Inteligência Artificial...`;
 
             renderPieChart(metrics.totalRecebido, metrics.totalAReceber, metrics.totalAtrasado);
-            renderLineChart(metrics.invoices, metrics.commissions, startDate, endDate);
-            renderBarChart(metrics.commissions, startDate, endDate);
+            renderLineChart();
+            renderBarChart();
         }
 
         // NOVO RECURSO AI: ANÁLISE FINANCEIRA
@@ -1037,12 +1042,9 @@
             }
         }
         
-        // GRÁFICOS (Mantidos, usando as variáveis globais de estado)
-        function renderPieChart(recebido, aReceber, atrasado) { /* ... lógica mantida ... */ }
-        function renderLineChart(invoices, commissions, startDate, endDate) { /* ... lógica mantida ... */ }
-        function renderBarChart(commissions, startDate, endDate) { /* ... lógica mantida ... */ }
-
-        // Os gráficos utilizam as funções anteriores de renderização.
+        // =================================================================
+        // GRÁFICOS
+        // =================================================================
 
         function renderPieChart(recebido, aReceber, atrasado) {
             const ctx = document.getElementById('chart-pie').getContext('2d');
