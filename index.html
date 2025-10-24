@@ -138,8 +138,9 @@
             <p class="text-gray-400 mb-8">Faça login para acessar o Dashboard.</p>
 
             <form id="login-form" class="space-y-6">
-                <input type="email" id="login-email" placeholder="Email (admin@novan.com)" required class="w-full">
-                <input type="password" id="login-password" placeholder="Senha (123)" required class="w-full">
+                <!-- Removida a sugestão de login e o atributo 'required' -->
+                <input type="email" id="login-email" placeholder="Email (opcional)" class="w-full">
+                <input type="password" id="login-password" placeholder="Senha (opcional)" class="w-full">
                 
                 <!-- NOVO: Checkbox Lembrar-me -->
                 <div class="flex items-center justify-start">
@@ -196,7 +197,10 @@
         <main class="flex-1 overflow-y-auto p-4 lg:p-8">
             <!-- Header -->
             <header class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold text-white">Dashboard Administrativo</h1>
+                <button onclick="logout()" class="flex items-center text-red-400 hover:text-red-500 transition-colors">
+                    <h1 class="text-3xl font-bold text-white hidden sm:block">Dashboard Administrativo</h1>
+                    <h1 class="text-3xl font-bold text-white block sm:hidden">NOVAN</h1>
+                </button>
                 <button onclick="logout()" class="flex items-center text-red-400 hover:text-red-500 transition-colors">
                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     <span class="hidden sm:inline">Logout</span>
@@ -624,7 +628,7 @@
          * @param {string} systemInstruction - Instrução de persona/comportamento para a AI.
          * @returns {Promise<string>} O texto gerado pela AI.
          */
-        async function callGeminiAPI(userQuery, systemInstruction) {
+        window.callGeminiAPI = async function(userQuery, systemInstruction) { // EXPOSED
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -697,7 +701,7 @@
         };
 
         // Máscara de Telefone (00) 00000-0000
-        function maskPhone(input) {
+        window.maskPhone = function(input) { // EXPOSED
             let value = input.value.replace(/\D/g, "");
             let masked = "";
             if (value.length > 0) masked += "(" + value.substring(0, 2);
@@ -707,7 +711,7 @@
         }
 
         // Notificação (Substitui alert/confirm não destrutivo)
-        function showNotification(message, isError = false) {
+        window.showNotification = function(message, isError = false) { // EXPOSED
             const container = document.getElementById('notification-container');
             const notification = document.createElement('div');
             notification.className = `card p-4 shadow-lg flex items-center space-x-3 transition-all duration-300 transform translate-x-full opacity-0 ${isError ? 'bg-red-800 border-red-400' : 'bg-green-800 border-green-400'} border-l-4`;
@@ -738,14 +742,14 @@
 
         function executeDelete(id, type) {
             switch (type) {
-                case 'client': deleteClient(id); break;
-                case 'invoice': deleteInvoice(id); break;
-                case 'commission': deleteCommission(id); break;
-                case 'avulso': deleteAvulso(id); break;
+                case 'client': window.deleteClient(id); break;
+                case 'invoice': window.deleteInvoice(id); break;
+                case 'commission': window.deleteCommission(id); break;
+                case 'avulso': window.deleteAvulso(id); break;
             }
         }
 
-        function cancelDelete(id, type, buttonElement) {
+        window.cancelDelete = function(id, type, buttonElement) { // EXPOSED
             const parent = buttonElement.closest('div');
             const row = parent.closest('tr');
             
@@ -753,13 +757,13 @@
             parent.dataset.confirming = 'false';
 
             parent.innerHTML = `
-                <button onclick="toggleDelete('${id}', '${type}', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
+                <button onclick="window.toggleDelete('${id}', '${type}', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
             `;
         }
 
-        function toggleDelete(id, type, buttonElement) {
+        window.toggleDelete = function(id, type, buttonElement) { // EXPOSED
             const parent = buttonElement.parentElement;
             const row = parent.closest('tr');
             const isConfirming = parent.dataset.confirming === 'true';
@@ -772,17 +776,17 @@
                 parent.dataset.confirming = 'true';
 
                 parent.innerHTML = `
-                    <button onclick="toggleDelete('${id}', '${type}', this)" title="Confirmar Exclusão" class="btn-primary bg-red-600 hover:bg-red-700 text-sm py-1 px-2 transition-colors">
+                    <button onclick="window.toggleDelete('${id}', '${type}', this)" title="Confirmar Exclusão" class="btn-primary bg-red-600 hover:bg-red-700 text-sm py-1 px-2 transition-colors">
                         Excluir?
                     </button>
-                    <button onclick="cancelDelete('${id}', '${type}', this)" title="Cancelar" class="text-gray-400 hover:text-white text-sm py-1 px-2 transition-colors">
+                    <button onclick="window.cancelDelete('${id}', '${type}', this)" title="Cancelar" class="text-gray-400 hover:text-white text-sm py-1 px-2 transition-colors">
                         Cancelar
                     </button>
                 `;
                 
                 setTimeout(() => {
                     if (parent.dataset.confirming === 'true') {
-                        cancelDelete(id, type, parent.querySelector('.text-gray-400'));
+                        window.cancelDelete(id, type, parent.querySelector('.text-gray-400'));
                     }
                 }, 5000);
             }
@@ -792,9 +796,6 @@
         // 1. AUTENTICAÇÃO E INICIALIZAÇÃO FIREBASE
         // =================================================================
 
-        const LOGIN_EMAIL = 'admin@novan.com';
-        const LOGIN_PASS = '123';
-        
         const loginForm = document.getElementById('login-form');
         const loginError = document.getElementById('login-error');
         
@@ -802,7 +803,7 @@
         const sidebar = document.getElementById('sidebar');
         const menuToggle = document.getElementById('menu-toggle');
 
-        function toggleMenu(forceClose = undefined) {
+        window.toggleMenu = function(forceClose = undefined) { // EXPOSED
             const isOpen = sidebar.classList.contains('open');
             if (forceClose !== undefined) {
                  if (forceClose) sidebar.classList.remove('open');
@@ -812,7 +813,7 @@
             }
         }
 
-        menuToggle.addEventListener('click', () => toggleMenu());
+        menuToggle.addEventListener('click', () => window.toggleMenu());
         
         // Autenticação Real (Anônima, pois o login simulado não possui token)
         onAuthStateChanged(auth, (user) => {
@@ -822,12 +823,10 @@
                 document.getElementById('login-view').classList.add('hidden');
                 document.getElementById('dashboard-view').classList.remove('hidden');
                 setupFirestoreListeners();
-                updateDashboard();
+                window.updateDashboard();
                 loadDataForForms();
             } else {
                 isAuthReady = false;
-                // REMOVIDA A TENTATIVA AUTOMÁTICA DE LOGIN ANÔNIMO para evitar o erro 'admin-restricted-operation'
-
                 // Se o user deslogou ou não está logado no Firebase, mostramos a tela de login.
                 localStorage.removeItem('isAuthenticated');
                 document.getElementById('login-view').classList.remove('hidden');
@@ -835,40 +834,30 @@
             }
         });
 
-        // Simulação de Login (apenas visual, a persistência é do Firebase)
+        // Login agora apenas inicia a sessão Firebase anônima (removida a checagem de credenciais)
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
             
-            if (email === LOGIN_EMAIL && password === LOGIN_PASS) {
-                loginError.classList.add('hidden');
-                
-                // 1. Marca como autenticado visualmente.
+            // 1. Tenta logar no Firebase Anonimamente para iniciar a sessão e persistência.
+            signInAnonymously(auth).then(() => {
                 localStorage.setItem('isAuthenticated', 'true'); 
-
-                // 2. Tenta logar no Firebase Anonimamente para iniciar a sessão e persistência.
-                signInAnonymously(auth).then(() => {
-                    // Se deu certo, o onAuthStateChanged cuida da navegação.
-                }).catch(error => {
-                    console.error("Erro ao tentar signInAnonymously após Login Simulado:", error);
-                    showNotification('Erro ao conectar com o Firebase (Autenticação Anônima). Verifique as configurações no Console.', true);
-                    // Força um reload para que o onAuthStateChanged mostre o dashboard (mesmo sem auth, para demonstração)
-                    location.reload(); 
-                });
-
-            } else {
+                // O onAuthStateChanged cuida da navegação e inicialização do Dashboard.
+            }).catch(error => {
+                console.error("Erro ao tentar signInAnonymously após tentativa de Login:", error);
+                // Exibe erro genérico (se o provedor de login anônimo não estiver ativo)
+                loginError.textContent = 'Erro ao conectar com o serviço de autenticação.';
                 loginError.classList.remove('hidden');
-            }
+                window.showNotification('Erro ao conectar com o Firebase. Verifique se o Login Anônimo está ativo.', true);
+            });
         });
 
-        function logout() {
+        window.logout = function() { // EXPOSED
             signOut(auth).then(() => {
                 localStorage.removeItem('isAuthenticated');
-                showNotification("Sessão encerrada.");
+                window.showNotification("Sessão encerrada.");
             }).catch((error) => {
                 console.error("Erro ao fazer logout:", error);
-                showNotification("Erro ao encerrar a sessão.", true);
+                window.showNotification("Erro ao encerrar a sessão.", true);
             });
         }
         
@@ -882,28 +871,28 @@
                 clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderClientesTable();
                 loadDataForForms();
-                updateDashboard();
+                window.updateDashboard();
             });
 
             // Faturas
             onSnapshot(collection(db, COLLECTIONS.invoices), (snapshot) => {
                 invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderFaturasTable();
-                updateDashboard();
+                window.renderFaturasTable();
+                window.updateDashboard();
             });
 
             // Comissões (Fábio)
             onSnapshot(collection(db, COLLECTIONS.fabioCommissions), (snapshot) => {
                 fabioCommissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderFabioTable();
-                updateDashboard();
+                window.updateDashboard();
             });
 
             // Serviços Avulsos
             onSnapshot(collection(db, COLLECTIONS.avulsos), (snapshot) => {
                 avulsos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAvulsosTable();
-                updateDashboard();
+                window.updateDashboard();
             });
         }
 
@@ -971,14 +960,14 @@
             };
         }
 
-        function clearDateFilters() {
+        window.clearDateFilters = function() { // EXPOSED
             document.getElementById('date-start').value = '';
             document.getElementById('date-end').value = '';
-            updateDashboard();
-            showNotification('Filtro de datas removido (Todo Período).');
+            window.updateDashboard();
+            window.showNotification('Filtro de datas removido (Todo Período).');
         }
 
-        function updateDashboard() {
+        window.updateDashboard = function() { // EXPOSED
             const startDate = document.getElementById('date-start').value;
             const endDate = document.getElementById('date-end').value;
 
@@ -999,7 +988,7 @@
         }
 
         // NOVO RECURSO AI: ANÁLISE FINANCEIRA
-        async function generateFinancialInsight() {
+        window.generateFinancialInsight = async function() { // EXPOSED
             const insightDiv = document.getElementById('ai-insight-result');
             const btn = document.getElementById('btn-ai-insight');
             
@@ -1031,11 +1020,11 @@
                 const resultText = await callGeminiAPI(prompt, systemInstruction);
 
                 insightDiv.innerHTML = resultText.replace(/\n/g, '<br>');
-                showNotification('Análise Financeira AI concluída.');
+                window.showNotification('Análise Financeira AI concluída.');
 
             } catch (error) {
                 insightDiv.textContent = `Erro ao gerar análise: ${error.message}`;
-                showNotification('Erro na Análise Financeira AI.', true);
+                window.showNotification('Erro na Análise Financeira AI.', true);
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -1219,7 +1208,7 @@
         const formClientes = document.getElementById('form-clientes');
 
         // NOVO RECURSO AI: GERADOR DE ESCOPO DE SERVIÇO
-        async function generateScopeDescription() {
+        window.generateScopeDescription = async function() { // EXPOSED
             // ... lógica mantida ... (usando 'clients' global)
             const btn = document.getElementById('btn-ai-scope');
             const textarea = document.getElementById('cliente-escopo');
@@ -1230,11 +1219,11 @@
             const servicos = Array.from(servicosCheckboxes).map(cb => cb.value);
 
             if (servicos.length === 0) {
-                showNotification('Selecione pelo menos um serviço antes de gerar o escopo.', true);
+                window.showNotification('Selecione pelo menos um serviço antes de gerar o escopo.', true);
                 return;
             }
             if (!valor || parseFloat(valor) <= 0) {
-                showNotification('Insira um Valor do Contrato válido antes de gerar o escopo.', true);
+                window.showNotification('Insira um Valor do Contrato válido antes de gerar o escopo.', true);
                 return;
             }
 
@@ -1250,11 +1239,11 @@
                 const resultText = await callGeminiAPI(prompt, systemInstruction);
 
                 textarea.value = resultText;
-                showNotification('Escopo gerado pela AI com sucesso!');
+                window.showNotification('Escopo gerado pela AI com sucesso!');
 
             } catch (error) {
                 textarea.value = `Erro: Não foi possível gerar o escopo. ${error.message}`;
-                showNotification('Erro ao gerar Escopo AI.', true);
+                window.showNotification('Erro ao gerar Escopo AI.', true);
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -1286,14 +1275,14 @@
                 await addDoc(collection(db, COLLECTIONS.clients), newClient);
                 formClientes.reset();
                 // onSnapshot irá atualizar a UI
-                showNotification('Cliente cadastrado com sucesso (Firestore)!');
+                window.showNotification('Cliente cadastrado com sucesso (Firestore)!');
             } catch (error) {
                 console.error("Erro ao adicionar cliente:", error);
-                showNotification('Erro ao cadastrar cliente no Firestore.', true);
+                window.showNotification('Erro ao cadastrar cliente no Firestore.', true);
             }
         });
 
-        async function deleteClient(id) {
+        window.deleteClient = async function(id) { // EXPOSED
             try {
                 // Deleta o documento do cliente
                 await deleteDoc(doc(db, COLLECTIONS.clients, id));
@@ -1307,10 +1296,10 @@
                 relatedAvulsos.forEach(async (d) => await deleteDoc(doc(db, COLLECTIONS.avulsos, d.id)));
                 
                 // onSnapshot fará o refresh da UI
-                showNotification('Cliente e dados relacionados excluídos (Firestore).', true);
+                window.showNotification('Cliente e dados relacionados excluídos (Firestore).', true);
             } catch (error) {
                 console.error("Erro ao deletar cliente:", error);
-                showNotification('Erro ao excluir cliente no Firestore.', true);
+                window.showNotification('Erro ao excluir cliente no Firestore.', true);
             }
         }
 
@@ -1328,7 +1317,7 @@
                     <td class="hidden sm:table-cell">${c.services.join(', ')}</td>
                     <td>
                         <div id="action-client-${c.id}" class="flex space-x-2" data-confirming="false">
-                            <button onclick="toggleDelete('${c.id}', 'client', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
+                            <button onclick="window.toggleDelete('${c.id}', 'client', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
@@ -1369,11 +1358,11 @@
             try {
                 await addDoc(collection(db, COLLECTIONS.invoices), newInvoice);
                 if (!isAutoGenerated) {
-                    showNotification('Fatura gerada com sucesso (Firestore)!');
+                    window.showNotification('Fatura gerada com sucesso (Firestore)!');
                 }
             } catch (error) {
                 console.error("Erro ao gerar fatura:", error);
-                showNotification('Erro ao gerar fatura no Firestore.', true);
+                window.showNotification('Erro ao gerar fatura no Firestore.', true);
             }
         }
 
@@ -1391,11 +1380,11 @@
             if (status === 'Pago') {
                 const nextDueDateString = getNextMonthDate(dueDate);
                 await generateInvoice(clientId, value, nextDueDateString, 'A Receber', true);
-                showNotification(`Próxima fatura (${formatDate(nextDueDateString)}) gerada automaticamente.`);
+                window.showNotification(`Próxima fatura (${formatDate(nextDueDateString)}) gerada automaticamente.`);
             }
         });
         
-        async function updateInvoiceStatus(id, newStatus) {
+        window.updateInvoiceStatus = async function(id, newStatus) { // EXPOSED
             const invoiceRef = doc(db, COLLECTIONS.invoices, id);
             const invoiceToUpdate = invoices.find(f => f.id === id);
             
@@ -1413,29 +1402,29 @@
                     
                     // Nota: A geração da próxima fatura precisa ser AGUARDADA para garantir a ordem
                     await generateInvoice(invoiceToUpdate.clientId, invoiceToUpdate.value, nextDueDateString, 'A Receber', true);
-                    showNotification('Fatura paga e próxima fatura gerada automaticamente (Firestore)!', false);
+                    window.showNotification('Fatura paga e próxima fatura gerada automaticamente (Firestore)!', false);
                 } else {
-                    showNotification(`Status da fatura atualizado para ${newStatus}.`);
+                    window.showNotification(`Status da fatura atualizado para ${newStatus}.`);
                 }
                 
             } catch (error) {
                 console.error("Erro ao atualizar status:", error);
-                showNotification('Erro ao atualizar status no Firestore.', true);
+                window.showNotification('Erro ao atualizar status no Firestore.', true);
             }
         }
 
-        async function deleteInvoice(id) {
+        window.deleteInvoice = async function(id) { // EXPOSED
             try {
                 await deleteDoc(doc(db, COLLECTIONS.invoices, id));
-                showNotification('Fatura excluída (Firestore).', true);
+                window.showNotification('Fatura excluída (Firestore).', true);
             } catch (error) {
                 console.error("Erro ao deletar fatura:", error);
-                showNotification('Erro ao excluir fatura no Firestore.', true);
+                window.showNotification('Erro ao excluir fatura no Firestore.', true);
             }
         }
 
 
-        function renderFaturasTable() {
+        window.renderFaturasTable = function() { // EXPOSED
             const filterClient = document.getElementById('fatura-filter-cliente').value;
             const filterStatus = document.getElementById('fatura-filter-status').value;
             let filteredInvoices = [...invoices];
@@ -1463,10 +1452,10 @@
                     <td class="${statusColor}">${f.status}</td>
                     <td>
                         <div id="action-invoice-${f.id}" class="flex space-x-2" data-confirming="false">
-                            ${f.status === 'A Receber' ? `<button onclick="updateInvoiceStatus('${f.id}', 'Pago')" title="Marcar como Pago" class="text-green-500 hover:text-green-700 transition-colors">
+                            ${f.status === 'A Receber' ? `<button onclick="window.updateInvoiceStatus('${f.id}', 'Pago')" title="Marcar como Pago" class="text-green-500 hover:text-green-700 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </button>` : `<div class="w-5 h-5"></div>`}
-                            <button onclick="toggleDelete('${f.id}', 'invoice', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
+                            <button onclick="window.toggleDelete('${f.id}', 'invoice', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
@@ -1493,10 +1482,10 @@
 
             try {
                 await addDoc(collection(db, COLLECTIONS.fabioCommissions), newCommission);
-                showNotification('Comissão registrada com sucesso (Firestore)!');
+                window.showNotification('Comissão registrada com sucesso (Firestore)!');
             } catch (error) {
                 console.error("Erro ao registrar comissão:", error);
-                showNotification('Erro ao registrar comissão no Firestore.', true);
+                window.showNotification('Erro ao registrar comissão no Firestore.', true);
             }
         }
 
@@ -1518,13 +1507,13 @@
             formServicosExtras.reset();
         });
 
-        async function deleteCommission(id) {
+        window.deleteCommission = async function(id) { // EXPOSED
             try {
                 await deleteDoc(doc(db, COLLECTIONS.fabioCommissions, id));
-                showNotification('Registro de comissão excluído (Firestore).', true);
+                window.showNotification('Registro de comissão excluído (Firestore).', true);
             } catch (error) {
                 console.error("Erro ao deletar comissão:", error);
-                showNotification('Erro ao excluir comissão no Firestore.', true);
+                window.showNotification('Erro ao excluir comissão no Firestore.', true);
             }
         }
 
@@ -1548,7 +1537,7 @@
                     <td class="hidden sm:table-cell">${c.observation || '-'}</td>
                     <td>
                         <div id="action-commission-${c.id}" class="flex space-x-2" data-confirming="false">
-                            <button onclick="toggleDelete('${c.id}', 'commission', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
+                            <button onclick="window.toggleDelete('${c.id}', 'commission', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
@@ -1589,24 +1578,24 @@
             try {
                 await addDoc(collection(db, COLLECTIONS.avulsos), newAvulso);
                 formAvulsos.reset();
-                showNotification('Serviço avulso registrado com sucesso (Firestore)!');
+                window.showNotification('Serviço avulso registrado com sucesso (Firestore)!');
             } catch (error) {
                 console.error("Erro ao registrar avulso:", error);
-                showNotification('Erro ao registrar serviço avulso no Firestore.', true);
+                window.showNotification('Erro ao registrar serviço avulso no Firestore.', true);
             }
         });
 
-        async function deleteAvulso(id) {
+        window.deleteAvulso = async function(id) { // EXPOSED
             try {
                 await deleteDoc(doc(db, COLLECTIONS.avulsos, id));
-                showNotification('Serviço avulso excluído (Firestore).', true);
+                window.showNotification('Serviço avulso excluído (Firestore).', true);
             } catch (error) {
                 console.error("Erro ao deletar avulso:", error);
-                showNotification('Erro ao excluir serviço avulso no Firestore.', true);
+                window.showNotification('Erro ao excluir serviço avulso no Firestore.', true);
             }
         }
 
-        function renderAvulsosTable() {
+        window.renderAvulsosTable = function() { // EXPOSED
             const filterClient = document.getElementById('avulso-filter-cliente').value;
             let filteredAvulsos = [...avulsos];
             const tbody = document.getElementById('avulsos-table-body');
@@ -1632,7 +1621,7 @@
                     <td class="hidden sm:table-cell">${a.observation || '-'}</td>
                     <td>
                         <div id="action-avulso-${a.id}" class="flex space-x-2" data-confirming="false">
-                            <button onclick="toggleDelete('${a.id}', 'avulso', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
+                            <button onclick="window.toggleDelete('${a.id}', 'avulso', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
@@ -1646,7 +1635,7 @@
         // 7. LÓGICA DE UI E NAVEGAÇÃO
         // =================================================================
 
-        function navigateTo(tabId, event) {
+        window.navigateTo = function(tabId, event) { // EXPOSED
             if (event) event.preventDefault();
             
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -1658,7 +1647,7 @@
             if (activeLink) activeLink.classList.add('active');
 
             if (tabId === 'dashboard') {
-                updateDashboard();
+                window.updateDashboard();
             }
         }
 
