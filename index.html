@@ -138,8 +138,8 @@
             <p class="text-gray-400 mb-8">Faça login para acessar o Dashboard.</p>
 
             <form id="login-form" class="space-y-4">
-                <input type="email" id="login-email" placeholder="Email (opcional)" class="w-full">
-                <input type="password" id="login-password" placeholder="Senha (opcional)" class="w-full">
+                <input type="email" id="login-email" placeholder="Seu Email" class="w-full" required>
+                <input type="password" id="login-password" placeholder="Sua Senha" class="w-full" required>
                 
                 <div class="flex items-center justify-start">
                     <label class="flex items-center text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">
@@ -148,7 +148,7 @@
                     </label>
                 </div>
                 
-                <button type="submit" class="btn-primary w-full text-lg">Entrar (Acesso Anônimo)</button>
+                <button type="submit" class="btn-primary w-full text-lg">Entrar</button>
                 <p class="text-sm text-red-400 mt-4 hidden" id="login-error">Credenciais incorretas.</p>
             </form>
             
@@ -590,8 +590,8 @@
         // =================================================================
         // FIREBASE IMPORTS E CONFIGURAÇÃO
         // =================================================================
-        // Importando funções de autenticação, incluindo Google Auth
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Importando funções de autenticação, incluindo Google Auth e Email/Senha
+        import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, getDocs, query, where, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
@@ -617,6 +617,27 @@
             fabioCommissions: `artifacts/${PROJECT_ID}/public/data/fabioCommissions`,
             avulsos: `artifacts/${PROJECT_ID}/public/data/avulsos`,
         };
+
+        // NOVO COMENTÁRIO IMPORTANTE: REGRAS DE SEGURANÇA DO FIRESTORE
+        /* ATENÇÃO: O erro "400 Bad Request" (WebChannelConnection RPC 'Write' errored) 
+            geralmente indica que as Regras de Segurança do Firestore estão BLOQUEANDO 
+            as operações de escrita (addDoc, setDoc, deleteDoc).
+            
+            Para que o aplicativo funcione com persistência, as Regras DESTE PROJETO 
+            (novangestao) devem permitir que QUALQUER usuário autenticado (anonymous ou Google) 
+            leia e escreva nos caminhos de dados públicos que o app está usando.
+            
+            Exemplo de regra NECESSÁRIA no console do Firebase (Firestore -> Rules):
+            
+            service cloud.firestore {
+              match /databases/{database}/documents {
+                // Permite leitura e escrita para QUALQUER usuário autenticado nas coleções públicas
+                match /artifacts/{appId}/public/data/{collection}/{document} {
+                  allow read, write: if request.auth != null;
+                }
+              }
+            }
+        */
 
         // Estado Global da Aplicação (Atualizado somente pelo onSnapshot)
         let clients = [];
@@ -827,7 +848,7 @@
 
         menuToggle.addEventListener('click', () => window.toggleMenu());
         
-        // Autenticação Real (Anônima, pois o login simulado não possui token)
+        // Autenticação Real (Email/Senha ou Google)
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 isAuthReady = true;
@@ -846,21 +867,46 @@
             }
         });
 
-        // Login Anônimo (usado pelo botão principal)
+        // Login com Email e Senha (método principal)
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            
-            // Tenta logar no Firebase Anonimamente para iniciar a sessão e persistência.
-            signInAnonymously(auth).then(() => {
-                localStorage.setItem('isAuthenticated', 'true'); 
-                // O onAuthStateChanged cuida da navegação e inicialização do Dashboard.
-            }).catch(error => {
-                console.error("Erro ao tentar signInAnonymously após tentativa de Login:", error);
-                // Exibe erro genérico (se o provedor de login anônimo não estiver ativo)
-                loginError.textContent = 'Erro ao conectar com o serviço de autenticação.';
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const rememberMe = document.getElementById('login-remember').checked;
+
+            loginError.classList.add('hidden'); // Esconde erros antigos
+
+            if (!email || !password) {
+                loginError.textContent = 'Por favor, insira email e senha.';
                 loginError.classList.remove('hidden');
-                window.showNotification('Erro ao conectar com o Firebase. Verifique se o Login Anônimo está ativo.', true);
-            });
+                return;
+            }
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then(() => {
+                    window.showNotification('Login realizado com sucesso!', false);
+                    // Lógica de lembrar credenciais (se marcada)
+                    if (rememberMe) {
+                        localStorage.setItem('rememberEmail', email);
+                        localStorage.setItem('rememberPassword', password);
+                    } else {
+                        localStorage.removeItem('rememberEmail');
+                        localStorage.removeItem('rememberPassword');
+                    }
+                    // onAuthStateChanged cuidará da navegação
+                })
+                .catch((error) => {
+                    console.error("Erro no Login com Email/Senha:", error);
+                    let errorText = 'Erro no login. Verifique as credenciais.';
+                    if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                        errorText = 'Email ou senha inválidos. Por favor, tente novamente.';
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                        errorText = 'O login por Email/Senha não está ativado no Firebase. Ative para usar este método.';
+                    }
+                    loginError.textContent = errorText;
+                    loginError.classList.remove('hidden');
+                    window.showNotification(errorText, true);
+                });
         });
 
         // NOVO: Login com Google
