@@ -155,21 +155,32 @@
         .sidebar-link.active::before {
             transform: translateX(0);
         }
-        .sidebar-link.active svg {
-            color: #38bdf8;
-            filter: drop-shadow(0 0 6px rgba(56,189,248,0.6));
-        }
         .sidebar-link:hover {
             transform: translateX(6px);
             color: #ffffff;
             border-left-color: rgba(14,165,233,0.5);
         }
+        
+        @keyframes floatingIcon {
+            0% { transform: translateY(0); filter: drop-shadow(0 0 0 rgba(14,165,233,0)); }
+            100% { transform: translateY(-3px); filter: drop-shadow(0 0 5px rgba(14,165,233,0.4)); }
+        }
+        @keyframes activeFloatingIcon {
+            0% { transform: translateY(0) scale(1.1); filter: drop-shadow(0 0 5px rgba(56,189,248,0.6)); }
+            100% { transform: translateY(-3px) scale(1.1); filter: drop-shadow(0 0 12px rgba(56,189,248,1)); }
+        }
         .sidebar-link svg {
-            transition: transform 0.3s ease, color 0.3s ease, filter 0.3s ease;
+            transition: color 0.3s ease;
+            animation: floatingIcon 2.5s infinite alternate ease-in-out;
+            transform-origin: center;
+        }
+        .sidebar-link.active svg {
+            color: #38bdf8;
+            animation: activeFloatingIcon 1.5s infinite alternate ease-in-out;
         }
         .sidebar-link:hover svg {
-            transform: scale(1.1);
             color: #38bdf8;
+            animation: activeFloatingIcon 1.5s infinite alternate ease-in-out;
         }
 
         /* Tabelas Modernas */
@@ -222,6 +233,16 @@
         .animated-n-path {
             stroke-dasharray: 70;
             animation: drawN 3s ease-in-out infinite alternate;
+        }
+
+        /* Nomes de Clientes Animados (Neon Effect) */
+        .animate-client-name {
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), text-shadow 0.3s ease, color 0.3s ease;
+        }
+        .group:hover .animate-client-name {
+            transform: translateX(6px) scale(1.02);
+            text-shadow: 0 0 12px currentColor;
         }
 
         .fade-in-up {
@@ -675,6 +696,31 @@
                     </form>
                 </div>
 
+                <!-- Painel de Filtros Avançados de Faturas -->
+                <div class="glass-card p-4 mt-4 flex flex-col md:flex-row justify-between items-center gap-4 animate-slide-left delay-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        </div>
+                        <h3 class="font-bold text-white text-sm uppercase tracking-wider">Filtros Fáceis</h3>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <select id="filter-invoice-client" class="input-field py-2 text-sm w-full sm:w-56 bg-[rgba(0,0,0,0.3)] transition-colors hover:bg-[rgba(14,165,233,0.1)] focus:bg-[rgba(15,23,42,0.9)]" onchange="window.renderFaturasTable()">
+                            <option value="">Todos os Clientes</option>
+                        </select>
+                        <select id="filter-invoice-month" class="input-field py-2 text-sm w-full sm:w-48 bg-[rgba(0,0,0,0.3)] transition-colors hover:bg-[rgba(14,165,233,0.1)] focus:bg-[rgba(15,23,42,0.9)]" onchange="window.renderFaturasTable()">
+                            <option value="" selected>Qualquer Mês</option>
+                            <option value="0">Mês Atual</option>
+                            <option value="-1">Mês Anterior</option>
+                            <option value="-2">2 Meses Atrás</option>
+                            <option value="-3">3 Meses Atrás</option>
+                            <option value="1">Próximo Mês</option>
+                            <option value="2">Daqui a 2 Meses</option>
+                            <option value="3">Daqui a 3 Meses</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="mt-4">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="glass-card p-0 overflow-hidden border-t-4 border-t-yellow-500 flex flex-col">
@@ -753,8 +799,17 @@
                                 <div><label class="input-label">Valor (R$)</label><input type="number" step="0.01" id="comissao-empresa-valor" required class="input-field"></div>
                                 <div><label class="input-label">Data Base</label><input type="date" id="comissao-empresa-data" required class="input-field"></div>
                             </div>
-                            <div><label class="input-label">Ref. Cliente/Mês</label><input type="text" id="comissao-empresa-obs" class="input-field"></div>
-                            <button type="submit" class="btn-primary w-full justify-center">Lançar Comissão</button>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="input-label">Cliente Referência</label>
+                                    <select id="comissao-empresa-cliente" class="input-field" required><option value="">Carregando...</option></select>
+                                </div>
+                                <div><label class="input-label">Detalhes (Mês)</label><input type="text" id="comissao-empresa-obs" class="input-field" placeholder="Ex: Ref. Março"></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button" id="btn-cancel-edit-comissao" class="btn-outline hidden w-full justify-center" onclick="cancelEditComissao()">Cancelar</button>
+                                <button type="submit" id="btn-submit-comissao" class="btn-primary w-full justify-center">Lançar Comissão</button>
+                            </div>
                         </form>
                     </div>
                     <div class="glass-card p-6 border-t-4 border-t-blue-500 relative">
@@ -765,8 +820,17 @@
                                 <div><label class="input-label">Custo (R$)</label><input type="number" step="0.01" id="extra-valor" required class="input-field"></div>
                                 <div><label class="input-label">Data de Execução</label><input type="date" id="extra-data" required class="input-field"></div>
                             </div>
-                            <div><label class="input-label">Descrição da Tarefa</label><input type="text" id="extra-obs" class="input-field"></div>
-                            <button type="submit" class="btn-primary w-full justify-center">Lançar Custo Extra</button>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="input-label">Cliente Referência</label>
+                                    <select id="extra-cliente" class="input-field"><option value="Outros / Interno">Outros / Interno</option></select>
+                                </div>
+                                <div><label class="input-label">Descrição da Tarefa</label><input type="text" id="extra-obs" class="input-field" required></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button" id="btn-cancel-edit-extra" class="btn-outline hidden w-full justify-center" onclick="cancelEditExtra()">Cancelar</button>
+                                <button type="submit" id="btn-submit-extra" class="btn-primary w-full justify-center">Lançar Custo Extra</button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -951,31 +1015,42 @@
         // --- RENDER TABLES E DADOS ---
         window.loadDataForForms = function() {
             const opts = '<option value="">Selecione um cliente...</option>' + clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            const optsWithNone = '<option value="Outros / Interno">Outros / Interno</option>' + clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
             
             const faturaClienteEl = document.getElementById('fatura-cliente');
             if (faturaClienteEl) faturaClienteEl.innerHTML = opts;
             
             const avulsoClienteEl = document.getElementById('avulso-cliente');
             if (avulsoClienteEl) avulsoClienteEl.innerHTML = opts + '<option value="Outros">Outro / Externo</option>';
+            
+            const comissaoClienteEl = document.getElementById('comissao-empresa-cliente');
+            if (comissaoClienteEl) comissaoClienteEl.innerHTML = opts;
+
+            const extraClienteEl = document.getElementById('extra-cliente');
+            if (extraClienteEl) extraClienteEl.innerHTML = optsWithNone;
+
+            const filterFaturaClienteEl = document.getElementById('filter-invoice-client');
+            if (filterFaturaClienteEl) filterFaturaClienteEl.innerHTML = '<option value="">Todos os Clientes</option>' + clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
         };
 
-        const avatarColors = [
-            'bg-red-500/20 text-red-400 border border-red-500/30', 
-            'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-            'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', 
-            'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-            'bg-purple-500/20 text-purple-400 border border-purple-500/30', 
-            'bg-pink-500/20 text-pink-400 border border-pink-500/30',
-            'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30', 
-            'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+        const colorThemes = [
+            { avatar: 'bg-red-500/20 text-red-400 border border-red-500/30', text: 'text-red-400' },
+            { avatar: 'bg-blue-500/20 text-blue-400 border border-blue-500/30', text: 'text-blue-400' },
+            { avatar: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', text: 'text-emerald-400' },
+            { avatar: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', text: 'text-yellow-400' },
+            { avatar: 'bg-purple-500/20 text-purple-400 border border-purple-500/30', text: 'text-purple-400' },
+            { avatar: 'bg-pink-500/20 text-pink-400 border border-pink-500/30', text: 'text-pink-400' },
+            { avatar: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30', text: 'text-cyan-400' },
+            { avatar: 'bg-orange-500/20 text-orange-400 border border-orange-500/30', text: 'text-orange-400' }
         ];
 
-        const getAvatarColor = (name) => {
-            if(!name) return avatarColors[0];
+        const getTheme = (name) => {
+            if(!name) return colorThemes[0];
             let hash = 0;
             for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-            return avatarColors[Math.abs(hash) % avatarColors.length];
+            return colorThemes[Math.abs(hash) % colorThemes.length];
         };
+        const getAvatarColor = (name) => getTheme(name).avatar;
 
         window.renderClientesTable = function() {
             const grid = document.getElementById('clientes-grid');
@@ -1031,25 +1106,49 @@
             const listPagas = document.getElementById('faturas-pagas-list');
             
             if (!listPendentes || !listPagas) return;
+
+            const clientFilter = document.getElementById('filter-invoice-client')?.value || '';
+            const monthFilterStr = document.getElementById('filter-invoice-month')?.value || '';
+
+            let filteredInvoices = invoices;
+
+            if (clientFilter) {
+                filteredInvoices = filteredInvoices.filter(f => f.clientName === clientFilter);
+            }
+
+            if (monthFilterStr !== '') {
+                const monthOffset = parseInt(monthFilterStr);
+                const today = new Date();
+                const targetMonth = today.getMonth() + monthOffset;
+                const targetYear = today.getFullYear() + Math.floor(targetMonth / 12);
+                const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+
+                filteredInvoices = filteredInvoices.filter(f => {
+                    if (!f.dueDate) return false;
+                    const dateParts = f.dueDate.split('-');
+                    const invYear = parseInt(dateParts[0]);
+                    const invMonth = parseInt(dateParts[1]) - 1;
+                    return invYear === targetYear && invMonth === normalizedMonth;
+                });
+            }
             
-            const pendentes = invoices.filter(f => f.status === 'A Receber').sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
-            const pagas = invoices.filter(f => f.status === 'Pago').sort((a,b) => new Date(b.dueDate) - new Date(a.dueDate));
+            const pendentes = filteredInvoices.filter(f => f.status === 'A Receber').sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+            const pagas = filteredInvoices.filter(f => f.status === 'Pago').sort((a,b) => new Date(b.dueDate) - new Date(a.dueDate));
 
             const renderItem = (f, isPaid, index) => {
                 const isLate = !isPaid && new Date(f.dueDate + 'T00:00:00') < new Date();
                 const dueText = isLate ? `<span class="text-red-400 font-bold">Atrasado (${formatDate(f.dueDate)})</span>` : `Vence em ${formatDate(f.dueDate)}`;
                 
-                // Aplicar cor fixa do cliente ao avatar
-                const avatarTheme = getAvatarColor(f.clientName);
+                const theme = getTheme(f.clientName);
 
                 return `
                 <div class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] transition-all fade-in-up shadow-sm group" style="animation-delay: ${index * 40}ms">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${avatarTheme}">
-                            ${f.clientName.charAt(0).toUpperCase()}
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${theme.avatar}">
+                            ${(f.clientName || 'O').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <p class="font-bold text-white text-sm lg:text-base leading-tight">${f.clientName}</p>
+                            <p class="font-bold text-lg leading-tight animate-client-name ${theme.text}">${f.clientName}</p>
                             <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 ${isPaid ? `Pago ref. ${formatDate(f.dueDate)}` : dueText}
@@ -1071,11 +1170,11 @@
 
             listPendentes.innerHTML = pendentes.length 
                 ? pendentes.map((f, i) => renderItem(f, false, i)).join('') 
-                : '<div class="h-full flex flex-col items-center justify-center p-8 text-center"><div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-3"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><p class="text-gray-400 font-medium">Tudo em dia!</p><p class="text-xs text-gray-500">Nenhuma fatura pendente.</p></div>';
+                : '<div class="h-full flex flex-col items-center justify-center p-8 text-center"><div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-3"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><p class="text-gray-400 font-medium">Tudo em dia!</p><p class="text-xs text-gray-500">Nenhuma fatura encontrada com estes filtros.</p></div>';
             
             listPagas.innerHTML = pagas.length 
                 ? pagas.map((f, i) => renderItem(f, true, i)).join('') 
-                : '<p class="text-center text-gray-500 py-8 text-sm">Nenhum pagamento registrado recentemente.</p>';
+                : '<p class="text-center text-gray-500 py-8 text-sm">Nenhum pagamento registrado encontrado.</p>';
         };
 
         window.renderFabioTable = function() {
@@ -1088,14 +1187,22 @@
             tbody.innerHTML = sorted.map((c, i) => {
                 total += parseFloat(c.value);
                 const isExtra = c.type !== 'Comissão Fixa (Empresa)';
+                const clientBadge = c.clientName && c.clientName !== 'Outros / Interno' ? `<div class="text-[11px] text-sky-400 font-bold mt-1.5 tracking-wide flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> ${c.clientName}</div>` : '';
+
                 return `
-                <tr class="fade-in-up" style="animation-delay: ${i*50}ms">
-                    <td><span class="badge ${isExtra ? 'badge-warning' : 'badge-success'}">${c.type}</span></td>
-                    <td class="font-bold text-white">${formatCurrency(c.value)}</td>
-                    <td class="text-gray-400">${formatDate(c.date)}</td>
-                    <td class="hidden sm:table-cell text-sm text-gray-500">${c.obs || '-'}</td>
-                    <td class="text-right">
-                        <button onclick="window.deleteRecord('${COLLECTIONS.fabioCommissions}', '${c.id}')" class="text-gray-500 hover:text-red-400 p-2 transition-colors"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                <tr class="fade-in-up hover:bg-white/[0.02] transition-colors" style="animation-delay: ${i*50}ms">
+                    <td class="py-3 px-3">
+                        <span class="badge ${isExtra ? 'badge-warning' : 'badge-success'}">${c.type}</span>
+                        ${clientBadge}
+                    </td>
+                    <td class="font-bold text-white py-3 px-3">${formatCurrency(c.value)}</td>
+                    <td class="text-gray-400 py-3 px-3">${formatDate(c.date)}</td>
+                    <td class="hidden sm:table-cell text-sm text-gray-500 py-3 px-3">${c.obs || '-'}</td>
+                    <td class="text-right py-3 px-3">
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="window.editComissao('${c.id}')" class="text-gray-400 hover:text-sky-400 p-1.5 transition-colors bg-white/5 hover:bg-sky-500/20 rounded-lg" title="Editar Lançamento"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                            <button onclick="window.deleteRecord('${COLLECTIONS.fabioCommissions}', '${c.id}')" class="text-gray-400 hover:text-red-400 p-1.5 transition-colors bg-white/5 hover:bg-red-500/20 rounded-lg" title="Excluir Lançamento"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
                     </td>
                 </tr>
             `}).join('');
@@ -1205,12 +1312,13 @@
 
             tbody.innerHTML = pending.map(f => {
                 const isLate = new Date(f.dueDate + 'T00:00:00') < new Date();
+                const theme = getTheme(f.clientName);
                 return `
-                <tr class="hover:bg-white/[0.02] transition-colors">
+                <tr class="hover:bg-white/[0.02] transition-colors group cursor-default">
                     <td class="py-3 px-4 flex items-center gap-3">
-                        <div class="w-2 h-2 rounded-full ${isLate ? 'bg-red-500' : 'bg-yellow-500'}"></div>
+                        <div class="w-2 h-2 rounded-full ${isLate ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-yellow-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'} animate-pulse"></div>
                         <div>
-                            <p class="font-semibold text-white leading-tight">${f.clientName}</p>
+                            <p class="font-semibold text-lg leading-tight animate-client-name ${theme.text}">${f.clientName}</p>
                             <p class="text-xs ${isLate ? 'text-red-400 font-bold' : 'text-gray-400'}">${isLate ? 'Atrasado' : 'Vence em'} ${formatDate(f.dueDate)}</p>
                         </div>
                     </td>
@@ -1499,20 +1607,117 @@
             });
         };
 
-        setupForm('form-comissao-empresa', COLLECTIONS.fabioCommissions, () => ({
-            type: 'Comissão Fixa (Empresa)',
-            value: parseFloat(document.getElementById('comissao-empresa-valor').value),
-            date: document.getElementById('comissao-empresa-data').value,
-            obs: document.getElementById('comissao-empresa-obs').value
-        }));
+        // --- SISTEMA DE EDIÇÃO E CADASTRO FÁBIO ---
+        let editingComissaoId = null;
+        let editingExtraId = null;
 
-        setupForm('form-servicos-extras', COLLECTIONS.fabioCommissions, () => ({
-            type: 'Serviço Extra',
-            value: parseFloat(document.getElementById('extra-valor').value),
-            date: document.getElementById('extra-data').value,
-            obs: document.getElementById('extra-obs').value
-        }));
+        window.editComissao = function(id) {
+            const c = fabioCommissions.find(x => x.id === id);
+            if(!c) return;
 
+            if (c.type === 'Comissão Fixa (Empresa)') {
+                editingComissaoId = id;
+                document.getElementById('btn-submit-comissao').innerText = 'Atualizar';
+                document.getElementById('btn-cancel-edit-comissao').classList.remove('hidden');
+
+                document.getElementById('comissao-empresa-valor').value = c.value || '';
+                document.getElementById('comissao-empresa-data').value = c.date || '';
+                
+                // Trata registros antigos colocando em 'obs' caso não haja clientName salvo no banco
+                let matchedClient = c.clientName || '';
+                if (!matchedClient && c.obs) {
+                    const optExists = Array.from(document.getElementById('comissao-empresa-cliente').options).some(o => o.value === c.obs);
+                    if(optExists) matchedClient = c.obs;
+                }
+                document.getElementById('comissao-empresa-cliente').value = matchedClient;
+                document.getElementById('comissao-empresa-obs').value = c.obs || '';
+                
+                const container = document.getElementById('form-fabio-container');
+                if(!container.classList.contains('active')) window.toggleForm('form-fabio-container');
+                document.getElementById('form-comissao-empresa').scrollIntoView({behavior: 'smooth'});
+            } else {
+                editingExtraId = id;
+                document.getElementById('btn-submit-extra').innerText = 'Atualizar';
+                document.getElementById('btn-cancel-edit-extra').classList.remove('hidden');
+
+                document.getElementById('extra-valor').value = c.value || '';
+                document.getElementById('extra-data').value = c.date || '';
+                document.getElementById('extra-cliente').value = c.clientName || 'Outros / Interno';
+                document.getElementById('extra-obs').value = c.obs || '';
+                
+                const container = document.getElementById('form-fabio-container');
+                if(!container.classList.contains('active')) window.toggleForm('form-fabio-container');
+                document.getElementById('form-servicos-extras').scrollIntoView({behavior: 'smooth'});
+            }
+        };
+
+        window.cancelEditComissao = function() {
+            editingComissaoId = null;
+            document.getElementById('form-comissao-empresa').reset();
+            document.getElementById('btn-submit-comissao').innerText = 'Lançar Comissão';
+            document.getElementById('btn-cancel-edit-comissao').classList.add('hidden');
+        };
+
+        window.cancelEditExtra = function() {
+            editingExtraId = null;
+            document.getElementById('form-servicos-extras').reset();
+            document.getElementById('btn-submit-extra').innerText = 'Lançar Custo Extra';
+            document.getElementById('btn-cancel-edit-extra').classList.add('hidden');
+        };
+
+        document.getElementById('form-comissao-empresa')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const origText = btn.innerHTML;
+            btn.innerHTML = 'Salvando...'; btn.disabled = true;
+
+            const data = {
+                type: 'Comissão Fixa (Empresa)',
+                value: parseFloat(document.getElementById('comissao-empresa-valor').value),
+                date: document.getElementById('comissao-empresa-data').value,
+                clientName: document.getElementById('comissao-empresa-cliente').value,
+                obs: document.getElementById('comissao-empresa-obs').value
+            };
+
+            if (editingComissaoId) {
+                await setDoc(doc(db, COLLECTIONS.fabioCommissions, editingComissaoId), data, { merge: true });
+                window.showNotification('Comissão atualizada com sucesso!');
+                window.cancelEditComissao();
+            } else {
+                await addDoc(collection(db, COLLECTIONS.fabioCommissions), data);
+                e.target.reset();
+                window.showNotification('Comissão salva com sucesso!');
+            }
+            btn.innerHTML = origText; btn.disabled = false;
+        });
+
+        document.getElementById('form-servicos-extras')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const origText = btn.innerHTML;
+            btn.innerHTML = 'Salvando...'; btn.disabled = true;
+
+            const data = {
+                type: 'Serviço Extra',
+                value: parseFloat(document.getElementById('extra-valor').value),
+                date: document.getElementById('extra-data').value,
+                clientName: document.getElementById('extra-cliente').value,
+                obs: document.getElementById('extra-obs').value
+            };
+
+            if (editingExtraId) {
+                await setDoc(doc(db, COLLECTIONS.fabioCommissions, editingExtraId), data, { merge: true });
+                window.showNotification('Serviço Extra atualizado!');
+                window.cancelEditExtra();
+            } else {
+                await addDoc(collection(db, COLLECTIONS.fabioCommissions), data);
+                e.target.reset();
+                window.showNotification('Serviço Extra salvo!');
+            }
+            btn.innerHTML = origText; btn.disabled = false;
+        });
+
+        // Formulário Avulsos (Ainda usando o Genérico)
         setupForm('form-avulsos', COLLECTIONS.avulsos, () => ({
             clientName: document.getElementById('avulso-cliente').value,
             type: document.getElementById('avulso-tipo').value,
