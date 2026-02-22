@@ -1,601 +1,799 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOVAN - Dashboard Administrativo</title>
-    <!-- Carregando Tailwind CSS CDN para estilização -->
+    <title>NOVAN - Sistema de Gestão</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Carregando Chart.js para gráficos -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Cores do Tema */
+        /* Paleta Azul Futurista & Variáveis */
         :root {
-            --bg-primary: #0f111a;
-            --bg-card: #1a1d2a;
-            --accent-purple: #7c3aed;
-            --accent-blue: #00d4ff;
-            --text-color: #e5e7eb;
+            --bg-base: #030712; 
+            --bg-surface: rgba(15, 23, 42, 0.65); 
+            --bg-surface-hover: rgba(30, 41, 59, 0.8);
+            --accent-primary: #0ea5e9; 
+            --accent-secondary: #0284c7; 
+            --accent-glow: rgba(14, 165, 233, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(14, 165, 233, 0.15); 
+            --ring-color: rgba(14, 165, 233, 0.3);
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-color);
-            transition: background-color 0.3s;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.06) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            overflow-x: hidden;
         }
 
-        .card {
-            background-color: var(--bg-card);
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
+        /* Glassmorphism Refinado */
+        .glass-card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 30px -5px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .card:hover {
+        .glass-card:hover {
+            border-color: rgba(14, 165, 233, 0.3);
+            box-shadow: 0 10px 40px -10px rgba(14, 165, 233, 0.15);
             transform: translateY(-2px);
         }
 
+        /* Botões Interativos Futuristas */
         .btn-primary {
-            background-color: var(--accent-purple);
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
             color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s, transform 0.1s;
+            padding: 0.6rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px -3px var(--accent-glow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
         .btn-primary:hover {
-            background-color: #6d28d9; /* Um roxo ligeiramente mais escuro */
-            transform: scale(1.02);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 25px -5px rgba(14, 165, 233, 0.6);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
-        /* Estilo para inputs e selects */
-        input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], select, textarea {
-            background-color: #2a2e41; /* Um pouco mais escuro que o card */
-            border: 1px solid #3f445d;
-            color: var(--text-color);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
+        .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
-            border-color: var(--accent-purple);
+        .btn-outline:hover {
+            background: rgba(14, 165, 233, 0.1);
+            border-color: rgba(14, 165, 233, 0.4);
+            color: #38bdf8;
+        }
+
+        /* Inputs Premium */
+        .input-field {
+            background-color: rgba(10, 12, 18, 0.6);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent-primary);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.5); /* Sombra roxa suave */
-        }
-
-        .sidebar-link.active {
-            background-color: rgba(124, 58, 237, 0.2);
-            color: var(--accent-purple);
-        }
-
-        /* Estilos específicos para a tabela */
-        .data-table th {
-            background-color: rgba(124, 58, 237, 0.1); /* Roxo suave */
-            padding: 1rem 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #3f445d;
-        }
-
-        .data-table td {
-            padding: 1rem 0.75rem;
-            border-bottom: 1px solid #2a2e41;
-        }
-
-        .data-table tr:hover {
-            background-color: rgba(124, 58, 237, 0.05); /* Efeito hover suave */
+            box-shadow: 0 0 0 3px var(--ring-color);
+            background-color: rgba(15, 23, 42, 0.9);
         }
         
-        .delete-confirming {
-            background-color: rgba(220, 38, 38, 0.1) !important; /* bg-red-600 with opacity */
-            transition: background-color 0.3s;
+        .input-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
         }
 
-        /* OTIMIZAÇÃO MOBILE: Sidebar */
-        #sidebar {
-            width: 72px; /* w-20 */
-            transform: translateX(-72px);
-            position: fixed;
-            height: 100vh;
-            z-index: 40;
+        /* Sidebar Animada e Moderna (CORRIGIDA) */
+        .sidebar-link {
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            z-index: 1;
+            border-left: 3px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
         }
-
-        #sidebar.open {
+        .sidebar-link::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(14,165,233,0.1) 0%, transparent 100%);
+            z-index: -1;
+            transform: translateX(-100%);
+            transition: transform 0.4s ease;
+        }
+        .sidebar-link:hover::before {
             transform: translateX(0);
         }
-
-        @media (min-width: 1024px) { /* lg */
-             #sidebar {
-                width: 256px; /* lg:w-64 */
-                transform: translateX(0);
-                position: relative;
-            }
-             #dashboard-view {
-                padding-left: 0 !important;
-             }
+        .sidebar-link.active {
+            color: #ffffff;
+            background: linear-gradient(90deg, rgba(14,165,233,0.15) 0%, transparent 100%);
+            border-left-color: #0ea5e9;
+            box-shadow: inset 4px 0 10px -4px rgba(14,165,233,0.5);
         }
+        .sidebar-link.active::before {
+            transform: translateX(0);
+        }
+        .sidebar-link.active svg {
+            color: #38bdf8;
+            filter: drop-shadow(0 0 6px rgba(56,189,248,0.6));
+        }
+        .sidebar-link:hover {
+            transform: translateX(6px);
+            color: #ffffff;
+            border-left-color: rgba(14,165,233,0.5);
+        }
+        .sidebar-link svg {
+            transition: transform 0.3s ease, color 0.3s ease, filter 0.3s ease;
+        }
+        .sidebar-link:hover svg {
+            transform: scale(1.1);
+            color: #38bdf8;
+        }
+
+        /* Tabelas Modernas */
+        .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .modern-table th {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modern-table td {
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease;
+        }
+        .modern-table tr:hover td { background-color: rgba(14, 165, 233, 0.05); }
+        .modern-table tr:last-child td { border-bottom: none; }
+
+        /* Animações Avançadas */
+        @keyframes slideInRightSoft {
+            0% { opacity: 0; transform: translateX(-20px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-left {
+            animation: slideInRightSoft 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes panAmbientGlow {
+            0% { transform: translateY(-10%) scale(1); opacity: 0.3; }
+            50% { transform: translateY(10%) scale(1.1); opacity: 0.6; }
+            100% { transform: translateY(-10%) scale(1); opacity: 0.3; }
+        }
+        .sidebar-ambient-glow {
+            animation: panAmbientGlow 6s ease-in-out infinite;
+        }
+
+        /* Animação da Letra N (Estilo Desenho/Neon) */
+        @keyframes drawN {
+            0% { stroke-dashoffset: 70; filter: drop-shadow(0 0 2px rgba(14,165,233,0.3)); }
+            50% { filter: drop-shadow(0 0 15px rgba(14,165,233,1)); }
+            100% { stroke-dashoffset: 0; filter: drop-shadow(0 0 5px rgba(14,165,233,0.6)); }
+        }
+        .animated-n-path {
+            stroke-dasharray: 70;
+            animation: drawN 3s ease-in-out infinite alternate;
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+        @keyframes titleReveal {
+            0% { opacity: 0; transform: translateX(-20px); filter: blur(4px); }
+            100% { opacity: 1; transform: translateX(0); filter: blur(0); }
+        }
+        .animate-title { animation: titleReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        @keyframes floatGlow {
+            0%, 100% { transform: translateY(0); box-shadow: 0 0 10px rgba(14, 165, 233, 0.3); }
+            50% { transform: translateY(-4px); box-shadow: 0 0 25px rgba(14, 165, 233, 0.8); }
+        }
+        .animate-logo { animation: floatGlow 3s ease-in-out infinite; }
+
+        .delay-75 { animation-delay: 75ms; }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-150 { animation-delay: 150ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-250 { animation-delay: 250ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+
+        .slide-down-form {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .slide-down-form.active {
+            max-height: 1000px;
+            opacity: 1;
+            margin-bottom: 2rem;
+        }
+
+        /* Notificação Toast */
+        .toast-enter { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .toast-exit { animation: slideOutRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .toast-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: rgba(255,255,255,0.3); animation: progress 3s linear forwards; }
+        @keyframes progress { from { width: 100%; } to { width: 0%; } }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(14, 165, 233, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(14, 165, 233, 0.5); }
+
+        .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.025em; }
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .badge-gray { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+        .badge-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
     </style>
 </head>
-<body class="bg-[#0f111a] text-white font-sans min-h-screen">
+<body class="antialiased">
 
-    <!-- Container de Notificações (Popups) -->
-    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2">
-        <!-- Notificações aparecerão aqui -->
+    <!-- Notificações Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none w-80"></div>
+
+    <!-- Modal de Confirmação (Substitui o confirm() bloqueado) -->
+    <div id="confirm-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="glass-card p-6 w-full max-w-sm scale-90 transition-transform duration-300 transform border-red-500/30" id="confirm-modal-content">
+            <div class="flex items-center gap-3 mb-4 text-red-400">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <h3 class="text-xl font-bold text-white">Confirmar Exclusão</h3>
+            </div>
+            <p class="text-gray-400 text-sm mb-6">Esta ação apagará permanentemente o registro e não poderá ser desfeita. Tem certeza?</p>
+            <div class="flex gap-3 justify-end">
+                <button onclick="window.closeConfirmModal()" class="btn-outline border-transparent hover:bg-white/5">Cancelar</button>
+                <button id="btn-confirm-delete" class="btn-primary !bg-gradient-to-r !from-red-500 !to-red-600 !shadow-red-500/30 !border-red-500/50">Sim, Excluir</button>
+            </div>
+        </div>
     </div>
-    
-    <!-- Botão Hamburguer (Mobile Only) -->
-    <button id="menu-toggle" class="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-full bg-[#1a1d2a] hover:bg-gray-800 transition-colors shadow-lg">
-        <svg id="menu-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-    </button>
 
+    <!-- 1. TELA DE LOGIN -->
+    <div id="login-view" class="flex items-center justify-center min-h-screen p-4 relative overflow-hidden">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
 
-    <!-- 1. VIEW DE LOGIN -->
-    <div id="login-view" class="flex items-center justify-center min-h-screen">
-        <div class="card p-8 w-full max-w-md text-center">
-            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-6">NOVAN | Admin</h1>
-            <p class="text-gray-400 mb-8">Faça login para acessar o Dashboard.</p>
+        <div class="glass-card p-10 w-full max-w-md text-center fade-in-up relative z-10">
+            <div class="w-20 h-20 bg-gradient-to-br from-sky-400 to-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-sky-500/30 transform hover:scale-105 transition-transform duration-500 animate-logo">
+                <svg class="w-10 h-10 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path class="animated-n-path" d="M5 21V3l14 18V3"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2 tracking-tight">NOVAN</h1>
+            <p class="text-gray-400 mb-8 text-sm font-medium">Gestão Inteligente & Dashboard</p>
 
-            <form id="login-form" class="space-y-4">
-                <input type="email" id="login-email" placeholder="Seu Email" class="w-full" required>
-                <input type="password" id="login-password" placeholder="Sua Senha" class="w-full" required>
-                
-                <div class="flex items-center justify-start">
-                    <label class="flex items-center text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">
-                        <input type="checkbox" id="login-remember" class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700 cursor-pointer">
-                        Lembrar-me
-                    </label>
+            <form id="login-form" class="space-y-5">
+                <div class="relative group">
+                    <svg class="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-sky-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path></svg>
+                    <input type="email" id="login-email" placeholder="Email de acesso" class="input-field pl-12" required>
+                </div>
+                <div class="relative group">
+                    <svg class="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-sky-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    <input type="password" id="login-password" placeholder="Senha segura" class="input-field pl-12" required>
                 </div>
                 
-                <button type="submit" class="btn-primary w-full text-lg">Entrar</button>
-                <p class="text-sm text-red-400 mt-4 hidden" id="login-error">Credenciais incorretas.</p>
+                <button type="submit" class="btn-primary w-full text-base py-3.5 mt-2">Acessar Sistema</button>
+                <p class="text-sm text-red-400 mt-4 hidden bg-red-500/10 p-3 rounded-lg border border-red-500/20" id="login-error">Credenciais incorretas.</p>
             </form>
             
-            <div class="mt-6">
-                <button type="button" onclick="signInWithGoogle()" class="flex items-center justify-center w-full py-2 px-4 border border-gray-600 rounded-lg text-white bg-gray-700 hover:bg-gray-600 transition-colors shadow-lg">
-                    <svg class="w-5 h-5 mr-3" viewBox="0 0 48 48">
+            <div class="mt-8 pt-6 border-t border-white/5">
+                <button type="button" onclick="signInWithGoogle()" class="btn-outline w-full justify-center py-3 text-gray-300">
+                    <svg class="w-5 h-5 mr-2" viewBox="0 0 48 48">
                         <path fill="#FFC107" d="M43.6 20.4H24v7.2h10.4c-.4 2.8-2.4 5.2-5.6 6.8v4.8c4.4-4 7.2-9.6 7.2-16.8z"/>
                         <path fill="#FF3D00" d="M24 8c4.8 0 8.8 1.6 11.6 4.4l4.8-4.8c-4-3.6-9.6-6-16.4-6-12.8 0-22.4 9.6-22.4 22.4h7.2c0-8 6.4-14.4 14.4-14.4z"/>
                         <path fill="#4CAF50" d="M24 43.6c-6.4 0-11.6-2-15.6-5.6l5.2-4.4c4 3.2 8.8 5.2 11.2 5.2 7.2 0 12.8-4.8 12.8-11.2h7.2c0 6.8-2.8 12.4-7.2 16.8z"/>
                         <path fill="#1976D2" d="M43.6 20.4H24v7.2h10.4c-.4 2.8-2.4 5.2-5.6 6.8v4.8c4.4-4 7.2-9.6 7.2-16.8z"/>
                     </svg>
-                    Login com Google
+                    Entrar com Google
                 </button>
             </div>
-
         </div>
     </div>
 
-    <!-- 2. VIEW DO DASHBOARD -->
-    <div id="dashboard-view" class="hidden h-screen flex pt-16 lg:pt-0">
+    <!-- 2. APLICAÇÃO PRINCIPAL -->
+    <div id="dashboard-view" class="hidden h-screen flex flex-col lg:flex-row overflow-hidden">
         
-        <!-- Sidebar Fixa -->
-        <aside id="sidebar" class="flex-shrink-0 bg-[#1a1d2a] border-r border-gray-700 p-4 transition-all duration-300">
-            <div class="mb-8 hidden lg:block">
-                <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">NOVAN</h2>
+        <!-- Mobile Header & Menu Toggle -->
+        <div class="lg:hidden flex items-center justify-between p-4 bg-[var(--bg-surface)] border-b border-[var(--border-color)] z-40 relative backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-sky-400 to-blue-600 rounded-lg flex items-center justify-center animate-logo">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path class="animated-n-path" d="M5 21V3l14 18V3"></path>
+                    </svg>
+                </div>
+                <h2 class="text-lg font-bold text-white tracking-wide">NOVAN</h2>
             </div>
-            <div class="mb-8 flex justify-center lg:hidden">
-                <div class="w-6 h-6 bg-purple-500 rounded-full"></div>
+            <button id="menu-toggle" class="p-2 text-gray-300 hover:text-white focus:outline-none" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </div>
+
+        <!-- Sidebar Navigation Animada & Rica -->
+        <aside id="sidebar" class="w-64 flex-shrink-0 flex flex-col bg-gradient-to-b from-[var(--bg-surface)] to-[#030712] backdrop-blur-xl border-r border-[var(--border-color)] fixed lg:relative h-full z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 relative overflow-hidden">
+            <!-- Efeito de brilho no fundo da sidebar -->
+            <div class="absolute top-0 left-0 w-full h-48 bg-sky-500/10 blur-[90px] pointer-events-none sidebar-ambient-glow"></div>
+
+            <div class="p-6 hidden lg:flex items-center gap-4 mb-2 border-b border-[var(--border-color)]/50 pb-6 relative z-10 animate-slide-left">
+                <div class="w-10 h-10 bg-gradient-to-br from-sky-400 to-blue-600 rounded-xl flex items-center justify-center animate-logo relative shadow-lg shadow-sky-500/20">
+                    <svg class="w-5 h-5 text-white absolute" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path class="animated-n-path" d="M5 21V3l14 18V3"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold tracking-wide text-white leading-none">NOVAN</h2>
+                    <span class="text-[10px] text-sky-400 font-semibold tracking-widest uppercase mt-1 block">Gestão PRO</span>
+                </div>
             </div>
 
-            <nav class="space-y-2">
-                <a href="#dashboard" onclick="navigateTo('dashboard', event); toggleMenu(false);" class="sidebar-link active flex items-center p-3 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors">
-                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 00-1-1h-3"></path></svg>
-                    <span class="ml-3 hidden lg:inline">Dashboard</span>
+            <nav class="flex-1 space-y-1 px-4 overflow-y-auto mt-6 lg:mt-4 pb-4 relative z-10">
+                <p class="text-[0.65rem] font-bold text-sky-500/70 uppercase tracking-widest mb-3 px-2 animate-slide-left delay-75">Visão Geral</p>
+                <a href="#dashboard" onclick="navigateTo('dashboard', event);" class="sidebar-link active flex items-center px-3 py-3 text-gray-400 rounded-lg animate-slide-left delay-100">
+                    <svg class="w-5 h-5 mr-3 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <span class="font-medium text-sm">Dashboard</span>
                 </a>
-                <a href="#clientes" onclick="navigateTo('clientes', event); toggleMenu(false);" class="sidebar-link flex items-center p-3 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors">
-                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h-10a2 2 0 01-2-2v-6a2 2 0 012-2h10a2 2 0 012 2v6a2 2 0 01-2 2zM9 10v-3a2 2 0 012-2h2a2 2 0 012 2v3"></path></svg>
-                    <span class="ml-3 hidden lg:inline">Clientes</span>
+                
+                <p class="text-[0.65rem] font-bold text-sky-500/70 uppercase tracking-widest mt-8 mb-3 px-2 animate-slide-left delay-150">Gestão Operacional</p>
+                <a href="#clientes" onclick="navigateTo('clientes', event);" class="sidebar-link flex items-center px-3 py-3 text-gray-400 rounded-lg animate-slide-left delay-200">
+                    <svg class="w-5 h-5 mr-3 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <span class="font-medium text-sm">Base de Clientes</span>
                 </a>
-                <a href="#faturas" onclick="navigateTo('faturas', event); toggleMenu(false);" class="sidebar-link flex items-center p-3 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors">
-                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2-10H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2z"></path></svg>
-                    <span class="ml-3 hidden lg:inline">Faturas</span>
+                <a href="#faturas" onclick="navigateTo('faturas', event);" class="sidebar-link flex items-center px-3 py-3 text-gray-400 rounded-lg animate-slide-left delay-250">
+                    <svg class="w-5 h-5 mr-3 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2-10H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2z"></path></svg>
+                    <span class="font-medium text-sm">Controle de Faturas</span>
                 </a>
-                <a href="#fabio" onclick="navigateTo('fabio', event); toggleMenu(false);" class="sidebar-link flex items-center p-3 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors">
-                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3-.895-3-2 .895-3 2-3zM12 21a9 9 0 100-18 9 9 0 000 18zM12 14s2 1 4 0"></path></svg>
-                    <span class="ml-3 hidden lg:inline">Fábio (Comissões)</span>
+                <a href="#avulsos" onclick="navigateTo('avulsos', event);" class="sidebar-link flex items-center px-3 py-3 text-gray-400 rounded-lg animate-slide-left delay-300">
+                    <svg class="w-5 h-5 mr-3 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span class="font-medium text-sm">Serviços Avulsos</span>
                 </a>
-                <a href="#avulsos" onclick="navigateTo('avulsos', event); toggleMenu(false);" class="sidebar-link flex items-center p-3 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors">
-                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM9 13h6m-6 4h6"></path></svg>
-                    <span class="ml-3 hidden lg:inline">Serviços Avulsos</span>
+
+                <p class="text-[0.65rem] font-bold text-sky-500/70 uppercase tracking-widest mt-8 mb-3 px-2 animate-slide-left delay-400">Time & Custos</p>
+                <a href="#fabio" onclick="navigateTo('fabio', event);" class="sidebar-link flex items-center px-3 py-3 text-gray-400 rounded-lg animate-slide-left delay-500">
+                    <svg class="w-5 h-5 mr-3 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3-.895-3-2 .895-3 2-3zM12 21a9 9 0 100-18 9 9 0 000 18z"></path></svg>
+                    <span class="font-medium text-sm">Comissões (Fábio)</span>
                 </a>
             </nav>
+
+            <!-- User Profile Block -->
+            <div class="p-4 border-t border-[var(--border-color)] bg-black/20 m-4 rounded-xl backdrop-blur-md shadow-inner animate-slide-left delay-500 relative z-10 group overflow-hidden">
+                <div class="absolute inset-0 bg-sky-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
+                <div class="flex items-center gap-3 mb-4 relative z-10">
+                    <div class="relative">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center text-white font-bold shadow-md shadow-sky-500/20 group-hover:shadow-sky-500/50 transition-shadow">AD</div>
+                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-[var(--bg-surface)] rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></div>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-white leading-tight group-hover:text-sky-300 transition-colors">Administrador</p>
+                        <p class="text-[10px] text-sky-400 font-medium">Sistema Online</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="flex items-center justify-center w-full px-3 py-2 text-red-400 bg-red-500/10 rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-colors text-sm font-medium border border-red-500/20 relative z-10">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Encerrar Sessão
+                </button>
+            </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto p-4 lg:p-8">
-            <!-- Header -->
-            <header class="flex justify-between items-center mb-8">
-                <button onclick="logout()" class="flex items-center text-red-400 hover:text-red-500 transition-colors">
-                    <h1 class="text-3xl font-bold text-white hidden sm:block">Dashboard Administrativo</h1>
-                    <h1 class="text-3xl font-bold text-white block sm:hidden">NOVAN</h1>
-                </button>
-                <button onclick="logout()" class="flex items-center text-red-400 hover:text-red-500 transition-colors">
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    <span class="hidden sm:inline">Logout</span>
-                </button>
+        <!-- Main Content (Dynamic Tabs) -->
+        <main class="flex-1 overflow-y-auto p-4 lg:p-8 relative">
+            
+            <!-- Global Header -->
+            <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 fade-in-up">
+                <div>
+                    <h1 class="text-3xl font-bold text-white tracking-tight leading-tight animate-title" id="page-title">Dashboard Analítico</h1>
+                    <p class="text-gray-400 text-sm mt-1 flex items-center gap-2 animate-title" style="animation-delay: 100ms" id="header-date">
+                        <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <span id="header-date-text">Data de hoje</span>
+                    </p>
+                </div>
+                
+                <!-- Botões de Ação Dinâmicos (injetados via JS conforme a aba) -->
+                <div id="dynamic-header-actions" class="flex gap-3 w-full md:w-auto"></div>
             </header>
 
-            <!-- Content Tabs Container -->
-            <div id="content-container">
+            <!-- 2.1 DASHBOARD TAB -->
+            <div id="tab-dashboard" class="tab-content fade-in-up delay-100">
+                
+                <!-- Quick Filters -->
+                <div class="glass-card p-2 flex flex-col lg:flex-row justify-between items-center gap-4 mb-8">
+                    <div class="flex flex-wrap gap-1 p-1">
+                        <button onclick="setQuickFilter(30)" id="filter-btn-30" class="btn-outline border-transparent text-xs py-1.5 px-3 active">30 Dias</button>
+                        <button onclick="setQuickFilter('month')" id="filter-btn-month" class="btn-outline border-transparent text-xs py-1.5 px-3">Mês Atual</button>
+                        <button onclick="setQuickFilter('year')" id="filter-btn-year" class="btn-outline border-transparent text-xs py-1.5 px-3">Este Ano</button>
+                    </div>
+                    <div class="flex items-center gap-2 pr-2">
+                        <input type="date" id="date-start" class="input-field py-1 text-xs w-32 bg-transparent border-none" onchange="customDateSelected()">
+                        <span class="text-gray-600 text-xs">ate</span>
+                        <input type="date" id="date-end" class="input-field py-1 text-xs w-32 bg-transparent border-none" onchange="customDateSelected()">
+                    </div>
+                </div>
 
-                <!-- 2.1 Dashboard Tab -->
-                <div id="tab-dashboard" class="tab-content">
-                    <h2 class="text-2xl font-semibold mb-6 text-white">Resumo Financeiro</h2>
-
-                    <!-- Filtros de Data -->
-                    <div class="card p-4 mb-6 flex flex-col sm:flex-row gap-4 items-end">
-                        <div class="flex-1 w-full sm:w-auto">
-                            <label for="date-start" class="block text-sm font-medium text-gray-400 mb-1">Data Inicial</label>
-                            <input type="date" id="date-start" class="w-full">
+                <!-- KPI Numbers -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+                    <div class="glass-card p-6 relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-green-500/10 rounded-full blur-xl group-hover:bg-green-500/20 transition-all"></div>
+                        <div class="flex items-center justify-between mb-4">
+                            <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Receita Líquida</p>
+                            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         </div>
-                        <div class="flex-1 w-full sm:w-auto">
-                            <label for="date-end" class="block text-sm font-medium text-gray-400 mb-1">Data Final</label>
-                            <input type="date" id="date-end" class="w-full">
-                        </div>
-                        <button onclick="updateDashboard()" class="btn-primary w-full sm:w-auto">Aplicar Filtros</button>
-                        <button onclick="clearDateFilters()" class="btn-primary bg-blue-500 hover:bg-blue-600 w-full sm:w-auto">Todo Período</button>
+                        <h3 class="text-3xl font-bold text-white tracking-tight count-up" data-value="0" id="kpi-recebido">R$ 0,00</h3>
                     </div>
 
-                    <!-- Cards de KPI -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
-                        
-                        <!-- Total Recebido -->
-                        <div class="card p-4 md:p-6 border-b-4 border-l-4 border-green-500 flex flex-col justify-between col-span-1">
-                            <p class="text-xs sm:text-sm text-gray-400">💰 Total Recebido</p>
-                            <p id="kpi-recebido" class="text-xl font-bold mt-1 text-green-400">R$ 0,00</p>
+                    <div class="glass-card p-6 relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/10 rounded-full blur-xl group-hover:bg-yellow-500/20 transition-all"></div>
+                        <div class="flex items-center justify-between mb-4">
+                            <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider">A Receber</p>
+                            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>
-                        
-                        <!-- Total a Receber -->
-                        <div class="card p-4 md:p-6 border-b-4 border-l-4 border-yellow-500 flex flex-col justify-between col-span-1">
-                            <p class="text-xs sm:text-sm text-gray-400">💸 Total a Receber</p>
-                            <p id="kpi-a-receber" class="text-xl font-bold mt-1 text-yellow-400">R$ 0,00</p>
+                        <h3 class="text-3xl font-bold text-white tracking-tight count-up" data-value="0" id="kpi-a-receber">R$ 0,00</h3>
+                    </div>
+
+                    <div class="glass-card p-6 relative overflow-hidden group border-red-500/20">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-xl group-hover:bg-red-500/20 transition-all"></div>
+                        <div class="flex items-center justify-between mb-4">
+                            <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Inadimplência</p>
+                            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                         </div>
-                        
-                        <!-- Total em Atraso -->
-                        <div class="card p-4 md:p-6 border-b-4 border-l-4 border-red-500 flex flex-col justify-between col-span-1">
-                            <p class="text-xs sm:text-sm text-gray-400">⏰ Total em Atraso</p>
-                            <p id="kpi-atrasado" class="text-xl font-bold mt-1 text-red-400">R$ 0,00</p>
+                        <h3 class="text-3xl font-bold text-red-400 tracking-tight count-up" data-value="0" id="kpi-atrasado">R$ 0,00</h3>
+                    </div>
+
+                    <div class="glass-card p-6 relative overflow-hidden group border-sky-500/30">
+                        <div class="absolute inset-0 bg-gradient-to-br from-sky-600/10 to-blue-600/10"></div>
+                        <div class="flex items-center justify-between mb-4 relative z-10">
+                            <p class="text-sm font-semibold text-sky-200 uppercase tracking-wider">Lucro Real (S/ Custos)</p>
+                            <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                         </div>
-                        
-                        <!-- Lucro Líquido -->
-                        <div class="card p-4 md:p-6 border-b-4 border-l-4 border-blue-500 flex flex-col justify-between col-span-1">
-                            <p class="text-xs sm:text-sm text-gray-400">📊 Lucro Líquido</p>
-                            <p id="kpi-lucro" class="text-xl font-bold mt-1 text-blue-400">R$ 0,00</p>
+                        <h3 class="text-3xl font-bold text-white tracking-tight count-up relative z-10" data-value="0" id="kpi-lucro">R$ 0,00</h3>
+                    </div>
+                </div>
+
+                <!-- Secundary KPIs: CRM Metrics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                    <div class="glass-card p-5 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         </div>
-                        
-                        <!-- Comissão Paga (Fab) -->
-                        <div class="card p-4 md:p-6 border-b-4 border-l-4 border-purple-500 flex flex-col justify-between col-span-2 md:col-span-3 lg:col-span-1">
-                            <p class="text-xs sm:text-sm text-gray-400">🤝 Comissão Paga (Fab)</p>
-                            <p id="kpi-comissao-fab" class="text-xl font-bold mt-1 text-purple-400">R$ 0,00</p>
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Clientes Ativos</p>
+                            <h3 class="text-2xl font-bold text-white count-up" data-value="0" id="kpi-clientes-ativos">0</h3>
                         </div>
                     </div>
+                    <div class="glass-card p-5 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">MRR (Recorrência)</p>
+                            <h3 class="text-2xl font-bold text-white count-up" data-value="0" id="kpi-mrr">R$ 0,00</h3>
+                        </div>
+                    </div>
+                    <div class="glass-card p-5 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Ticket Médio</p>
+                            <h3 class="text-2xl font-bold text-white count-up" data-value="0" id="kpi-ticket-medio">R$ 0,00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Charts & Tables Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
-                    <!-- Análise AI -->
-                    <div class="card p-6 mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-xl font-semibold">Análise Financeira Rápida (Gemini AI)</h3>
-                            <button onclick="generateFinancialInsight()" id="btn-ai-insight" class="btn-primary flex items-center space-x-2 text-sm">
-                                <svg class="w-5 h-5 text-yellow-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.97-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.28-3.32 7.76-7 7.93V22h-2v-2.07zM11 12V6h2v6h-2z"/></svg>
-                                <span>Gerar Análise AI ✨</span>
-                            </button>
-                        </div>
-                        <div id="ai-insight-result" class="text-gray-300 min-h-[50px] italic">
-                            Aguardando a geração de insights financeiros pela Inteligência Artificial...
-                        </div>
-                    </div>
-
-
-                    <!-- Gráficos -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="card p-6">
-                            <h3 class="text-xl font-semibold mb-4">Distribuição de Faturas</h3>
-                            <canvas id="chart-pie"></canvas>
-                        </div>
-                        <div class="card p-6">
-                            <h3 class="text-xl font-semibold mb-4">Lucro Líquido Mensal</h3>
+                    <div class="glass-card p-6 lg:col-span-2 flex flex-col">
+                        <h3 class="text-lg font-bold text-white mb-1">Evolução do Negócio</h3>
+                        <p class="text-sm text-gray-400 mb-6">Receitas brutas comparadas aos custos operacionais.</p>
+                        <div class="relative flex-1 min-h-[300px] w-full">
                             <canvas id="chart-line"></canvas>
                         </div>
-                        <div class="card p-6 lg:col-span-2">
-                            <h3 class="text-xl font-semibold mb-4">Comissões Pagas ao Fábio</h3>
-                            <canvas id="chart-bar"></canvas>
+                    </div>
+
+                    <div class="flex flex-col gap-6">
+                        <div class="glass-card p-6">
+                            <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider">Saúde das Faturas</h3>
+                            <div class="relative h-[200px] w-full flex justify-center">
+                                <canvas id="chart-pie"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-0 flex-1 flex flex-col">
+                            <div class="p-5 border-b border-[var(--border-color)]">
+                                <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    Atenção Requerida
+                                </h3>
+                            </div>
+                            <div class="overflow-y-auto max-h-[250px] p-2">
+                                <table class="w-full text-left border-collapse">
+                                    <tbody id="dash-pending-table" class="text-sm divide-y divide-[var(--border-color)]">
+                                        <!-- Javascript Injects Here -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 2.2 Cadastro de Clientes Tab -->
-                <div id="tab-clientes" class="tab-content hidden">
-                    <h2 class="text-2xl font-semibold mb-6 text-white">Cadastro de Clientes</h2>
-
-                    <!-- Formulário de Cadastro -->
-                    <div class="card p-6 mb-8">
-                        <form id="form-clientes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div class="lg:col-span-3">
-                                <label for="cliente-nome" class="block text-sm font-medium text-gray-400 mb-1">Nome Completo</label>
-                                <input type="text" id="cliente-nome" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="cliente-telefone" class="block text-sm font-medium text-gray-400 mb-1">Telefone</label>
-                                <!-- Máscara de telefone adicionada com oninput -->
-                                <input type="text" id="cliente-telefone" class="w-full" maxlength="15" oninput="maskPhone(this)">
-                            </div>
-                            <div>
-                                <label for="cliente-valor" class="block text-sm font-medium text-gray-400 mb-1">Valor do Contrato (R$)</label>
-                                <input type="number" step="0.01" id="cliente-valor" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="cliente-fechamento" class="block text-sm font-medium text-gray-400 mb-1">Data de Fechamento</label>
-                                <input type="date" id="cliente-fechamento" required class="w-full">
-                            </div>
-                            <div class="lg:col-span-3">
-                                <label class="block text-sm font-medium text-gray-400 mb-2">Serviços Contratados</label>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    <label class="flex items-center text-sm"><input type="checkbox" name="servicos-contratados" value="Tráfego Pago (Meta)" class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded">Tráfego Pago (Meta)</label>
-                                    <label class="flex items-center text-sm"><input type="checkbox" name="servicos-contratados" value="Tráfego Pago (Google)" class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded">Tráfego Pago (Google)</label>
-                                    <label class="flex items-center text-sm"><input type="checkbox" name="servicos-contratados" value="Social Media" class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded">Social Media</label>
-                                    <label class="flex items-center text-sm"><input type="checkbox" name="servicos-contratados" value="Produção e Criação de Conteúdo" class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded">Produção e Criação de Conteúdo</label>
-                                </div>
-                            </div>
-                            
-                            <!-- Novo campo para Escopo/Observação com Botão AI -->
-                            <div class="lg:col-span-3">
-                                <div class="flex justify-between items-end mb-1">
-                                    <label for="cliente-escopo" class="block text-sm font-medium text-gray-400">Escopo do Contrato / Observações</label>
-                                    <button type="button" onclick="generateScopeDescription()" id="btn-ai-scope" class="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center space-x-1 disabled:opacity-50">
-                                        <svg class="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.97-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.28-3.32 7.76-7 7.93V22h-2v-2.07zM11 12V6h2v6h-2z"/></svg>
-                                        <span>Gerar Escopo com AI ✨</span>
-                                    </button>
-                                </div>
-                                <textarea id="cliente-escopo" rows="3" class="w-full"></textarea>
-                            </div>
-                            
-                            <div class="lg:col-span-3 text-right">
-                                <button type="submit" class="btn-primary">Cadastrar Cliente</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Tabela de Clientes -->
-                    <div class="card p-6 overflow-x-auto">
-                        <h3 class="text-xl font-semibold mb-4">Clientes Cadastrados</h3>
-                        <table class="min-w-full divide-y divide-gray-700 data-table">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Telefone</th>
-                                    <th>Valor Contrato</th>
-                                    <th>Fechamento</th>
-                                    <th class="hidden sm:table-cell">Serviços</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clientes-table-body">
-                                <!-- Dados do cliente aqui -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 2.3 Faturas Tab -->
-                <div id="tab-faturas" class="tab-content hidden">
-                    <h2 class="text-2xl font-semibold mb-6 text-white">Gerenciamento de Faturas</h2>
-
-                    <!-- Formulário de Faturas -->
-                    <div class="card p-6 mb-8">
-                        <form id="form-faturas" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="fatura-cliente" class="block text-sm font-medium text-gray-400 mb-1">Selecionar Cliente</label>
-                                <select id="fatura-cliente" required class="w-full">
-                                    <option value="">Selecione...</option>
-                                    <!-- Clientes carregados via JS -->
-                                </select>
-                            </div>
-                            <div>
-                                <label for="fatura-valor" class="block text-sm font-medium text-gray-400 mb-1">Valor da Fatura (R$)</label>
-                                <input type="number" step="0.01" id="fatura-valor" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="fatura-vencimento" class="block text-sm font-medium text-gray-400 mb-1">Data de Vencimento</label>
-                                <input type="date" id="fatura-vencimento" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="fatura-status" class="block text-sm font-medium text-gray-400 mb-1">Status</label>
-                                <select id="fatura-status" required class="w-full">
-                                    <option value="A Receber">A Receber</option>
-                                    <option value="Pago">Pago</option>
-                                </select>
-                            </div>
-                            <div class="md:col-span-3 text-right">
-                                <button type="submit" class="btn-primary">Gerar Fatura</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Tabela de Faturas -->
-                    <div class="card p-6 overflow-x-auto">
-                        <h3 class="text-xl font-semibold mb-4">Faturas Emitidas</h3>
-                        <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                            <select id="fatura-filter-cliente" onchange="renderFaturasTable()" class="flex-1">
-                                <option value="">Filtrar por Cliente...</option>
-                            </select>
-                            <select id="fatura-filter-status" onchange="renderFaturasTable()" class="flex-1">
-                                <option value="">Filtrar por Status...</option>
-                                <option value="A Receber">A Receber</option>
-                                <option value="Pago">Pago</option>
-                            </select>
-                        </div>
-                        <table class="min-w-full divide-y divide-gray-700 data-table">
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th>Valor</th>
-                                    <th>Vencimento</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="faturas-table-body">
-                                <!-- Dados das faturas aqui -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 2.4 Fábio (Comissões) Tab -->
-                <div id="tab-fabio" class="tab-content hidden">
-                    <h2 class="text-2xl font-semibold mb-6 text-white">Comissões - Fábio</h2>
-
-                    <!-- Seção 1: Comissão da Empresa (30%) -->
-                    <div class="card p-6 mb-8">
-                        <h3 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2 text-purple-400">Comissão da Empresa (30%)</h3>
-                        <form id="form-comissao-empresa" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label for="comissao-empresa-valor" class="block text-sm font-medium text-gray-400 mb-1">Valor Pago (R$)</label>
-                                <input type="number" step="0.01" id="comissao-empresa-valor" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="comissao-empresa-data" class="block text-sm font-medium text-gray-400 mb-1">Data do Pagamento</label>
-                                <input type="date" id="comissao-empresa-data" required class="w-full">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="comissao-empresa-obs" class="block text-sm font-medium text-gray-400 mb-1">Observação</label>
-                                <input type="text" id="comissao-empresa-obs" class="w-full">
-                            </div>
-                            <div class="md:col-span-4 text-right">
-                                <button type="submit" class="btn-primary">Registrar Comissão</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Seção 2: Serviços Extras -->
-                    <div class="card p-6 mb-8">
-                        <h3 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2 text-blue-400">Serviços Extras</h3>
-                        <form id="form-servicos-extras" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label for="extra-valor" class="block text-sm font-medium text-gray-400 mb-1">Valor Pago (R$)</label>
-                                <input type="number" step="0.01" id="extra-valor" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="extra-data" class="block text-sm font-medium text-gray-400 mb-1">Data</label>
-                                <input type="date" id="extra-data" required class="w-full">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="extra-obs" class="block text-sm font-medium text-gray-400 mb-1">Observação</label>
-                                <input type="text" id="extra-obs" class="w-full">
-                            </div>
-                            <div class="md:col-span-4 text-right">
-                                <button type="submit" class="btn-primary">Registrar Serviço Extra</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Tabela de Registros e Total -->
-                    <div class="card p-6 overflow-x-auto">
-                        <h3 class="text-xl font-semibold mb-4">Registros de Pagamentos ao Fábio</h3>
-                        <p class="text-lg font-bold mb-4">Total Pago Acumulado: <span id="fabio-total-pago" class="text-purple-400">R$ 0,00</span></p>
-                        <table class="min-w-full divide-y divide-gray-700 data-table">
-                            <thead>
-                                <tr>
-                                    <th>Tipo</th>
-                                    <th>Valor</th>
-                                    <th>Data</th>
-                                    <th class="hidden sm:table-cell">Observação</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="fabio-table-body">
-                                <!-- Dados do Fábio aqui -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 2.5 Serviços Avulsos Tab -->
-                <div id="tab-avulsos" class="tab-content hidden">
-                    <h2 class="text-2xl font-semibold mb-6 text-white">Registro de Serviços Avulsos</h2>
-
-                    <!-- Formulário de Serviços Avulsos -->
-                    <div class="card p-6 mb-8">
-                        <form id="form-avulsos" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="avulso-cliente" class="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
-                                <select id="avulso-cliente" required class="w-full">
-                                    <option value="">Selecione...</option>
-                                    <option value="Outros">Outros</option> <!-- Opção 'Outros' adicionada -->
-                                    <!-- Clientes carregados via JS -->
-                                </select>
-                            </div>
-                            <div>
-                                <label for="avulso-tipo" class="block text-sm font-medium text-gray-400 mb-1">Tipo de Serviço</label>
-                                <select id="avulso-tipo" required class="w-full">
-                                    <option value="Edição de vídeo">Edição de vídeo</option>
-                                    <option value="Criação de site">Criação de site</option>
-                                    <option value="Criação de conteúdo">Criação de conteúdo</option>
-                                    <option value="Outros">Outros</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="avulso-valor" class="block text-sm font-medium text-gray-400 mb-1">Valor Recebido (R$)</label>
-                                <input type="number" step="0.01" id="avulso-valor" required class="w-full">
-                            </div>
-                            <div>
-                                <label for="avulso-data" class="block text-sm font-medium text-gray-400 mb-1">Data Recebida</label>
-                                <input type="date" id="avulso-data" required class="w-full">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="avulso-obs" class="block text-sm font-medium text-gray-400 mb-1">Observação</label>
-                                <input type="text" id="avulso-obs" class="w-full">
-                            </div>
-                            <div class="md:col-span-3 text-right">
-                                <button type="submit" class="btn-primary">Registrar Serviço</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Tabela de Serviços Avulsos -->
-                    <div class="card p-6 overflow-x-auto">
-                        <h3 class="text-xl font-semibold mb-4">Serviços Avulsos Registrados</h3>
-                        <div class="mb-4">
-                            <select id="avulso-filter-cliente" onchange="renderAvulsosTable()" class="flex-1">
-                                <option value="">Filtrar por Cliente...</option>
-                                <option value="Outros">Outros</option> <!-- Opção 'Outros' adicionada ao filtro -->
-                                <!-- Clientes carregados via JS -->
-                            </select>
-                        </div>
-                        <table class="min-w-full divide-y divide-gray-700 data-table">
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th>Tipo</th>
-                                    <th>Valor</th>
-                                    <th>Data</th>
-                                    <th class="hidden sm:table-cell">Observação</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="avulsos-table-body">
-                                <!-- Dados dos avulsos aqui -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
             </div>
+
+            <!-- 2.2 CLIENTES TAB -->
+            <div id="tab-clientes" class="tab-content hidden fade-in-up">
+                 <div id="form-clientes-container" class="slide-down-form glass-card p-6 border-t-4 border-t-sky-500">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-white" id="form-cliente-title">Cadastrar Novo Cliente</h3>
+                        <button onclick="window.cancelEditClient ? window.cancelEditClient() : toggleForm('form-clientes-container')" class="text-gray-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <form id="form-clientes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div class="lg:col-span-2">
+                            <label class="input-label">Nome Completo / Empresa</label>
+                            <input type="text" id="cliente-nome" required class="input-field" placeholder="Ex: Tech Solutions Ltda">
+                        </div>
+                        <div>
+                            <label class="input-label">Status da Conta</label>
+                            <select id="cliente-status" class="input-field">
+                                <option value="Ativo">Ativo</option>
+                                <option value="Pausado">Pausado</option>
+                                <option value="Inativo">Inativo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="input-label">E-mail de Contato</label>
+                            <input type="email" id="cliente-email" class="input-field" placeholder="contato@empresa.com">
+                        </div>
+                        <div>
+                            <label class="input-label">CNPJ / CPF</label>
+                            <input type="text" id="cliente-documento" class="input-field" placeholder="00.000.000/0000-00">
+                        </div>
+                        <div>
+                            <label class="input-label">Telefone / WhatsApp</label>
+                            <input type="text" id="cliente-telefone" class="input-field" placeholder="(00) 00000-0000">
+                        </div>
+                        <div>
+                            <label class="input-label">Valor do Contrato (R$)</label>
+                            <input type="number" step="0.01" id="cliente-valor" required class="input-field" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="input-label">Data de Fechamento</label>
+                            <input type="date" id="cliente-fechamento" required class="input-field">
+                        </div>
+                        <div class="lg:col-span-3 mt-2">
+                            <label class="input-label mb-3">Serviços Contratados</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[rgba(0,0,0,0.2)] p-4 rounded-xl border border-[var(--border-color)]">
+                                <label class="flex items-center text-sm cursor-pointer hover:text-white transition-colors"><input type="checkbox" name="servicos-contratados" value="Tráfego (Meta)" class="mr-3 h-4 w-4 text-sky-500 rounded bg-gray-800 border-gray-600 focus:ring-sky-500">Tráfego (Meta)</label>
+                                <label class="flex items-center text-sm cursor-pointer hover:text-white transition-colors"><input type="checkbox" name="servicos-contratados" value="Tráfego (Google)" class="mr-3 h-4 w-4 text-sky-500 rounded bg-gray-800 border-gray-600 focus:ring-sky-500">Tráfego (Google)</label>
+                                <label class="flex items-center text-sm cursor-pointer hover:text-white transition-colors"><input type="checkbox" name="servicos-contratados" value="Social Media" class="mr-3 h-4 w-4 text-sky-500 rounded bg-gray-800 border-gray-600 focus:ring-sky-500">Social Media</label>
+                                <label class="flex items-center text-sm cursor-pointer hover:text-white transition-colors"><input type="checkbox" name="servicos-contratados" value="Produção" class="mr-3 h-4 w-4 text-sky-500 rounded bg-gray-800 border-gray-600 focus:ring-sky-500">Produção de Conteúdo</label>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-3 mt-2">
+                            <label class="input-label">Escopo / Observações</label>
+                            <textarea id="cliente-escopo" rows="2" class="input-field" placeholder="Detalhes adicionais do contrato..."></textarea>
+                        </div>
+                        <div class="lg:col-span-3 text-right mt-2 pt-4 border-t border-[var(--border-color)] flex justify-end gap-3">
+                            <button type="button" id="btn-cancel-edit-cliente" class="btn-outline hidden" onclick="cancelEditClient()">Cancelar Edição</button>
+                            <button type="submit" id="btn-submit-cliente" class="btn-primary w-full sm:w-auto">Salvar Cliente</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="mt-2">
+                    <div class="flex justify-between items-center mb-6 px-1">
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Sua Carteira Ativa</h3>
+                    </div>
+                    <div id="clientes-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <!-- Javascript Injects Here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2.3 FATURAS TAB -->
+            <div id="tab-faturas" class="tab-content hidden fade-in-up">
+                <div id="form-faturas-container" class="slide-down-form glass-card p-6 border-t-4 border-t-blue-500">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-white" id="form-fatura-title">Emitir Nova Fatura</h3>
+                        <button onclick="window.cancelEditInvoice ? window.cancelEditInvoice() : toggleForm('form-faturas-container')" class="text-gray-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <form id="form-faturas" class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                        <div class="md:col-span-2">
+                            <label class="input-label">Selecionar Cliente Base</label>
+                            <select id="fatura-cliente" required class="input-field"><option value="">Carregando...</option></select>
+                        </div>
+                        <div>
+                            <label class="input-label">Valor (R$)</label>
+                            <input type="number" step="0.01" id="fatura-valor" required class="input-field">
+                        </div>
+                        <div>
+                            <label class="input-label">Vencimento</label>
+                            <input type="date" id="fatura-vencimento" required class="input-field">
+                        </div>
+                        <div>
+                            <label class="input-label">Status Atual</label>
+                            <select id="fatura-status" required class="input-field">
+                                <option value="A Receber">Pendente (A Receber)</option>
+                                <option value="Pago">Já Pago</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-3 flex items-end justify-end gap-3">
+                            <button type="button" id="btn-cancel-edit-fatura" class="btn-outline hidden" onclick="cancelEditInvoice()">Cancelar Edição</button>
+                            <button type="submit" id="btn-submit-fatura" class="btn-primary w-full sm:w-auto">Registrar Fatura</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="mt-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass-card p-0 overflow-hidden border-t-4 border-t-yellow-500 flex flex-col">
+                            <div class="p-5 border-b border-[var(--border-color)] bg-[rgba(245,158,11,0.05)] flex justify-between items-center">
+                                <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.6)]"></span> 
+                                    A Receber (Pendentes)
+                                </h3>
+                            </div>
+                            <div class="p-4 space-y-3 overflow-y-auto max-h-[600px] bg-black/10 flex-1" id="faturas-pendentes-list">
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-0 overflow-hidden border-t-4 border-t-emerald-500 flex flex-col opacity-90">
+                            <div class="p-5 border-b border-[var(--border-color)] bg-[rgba(16,185,129,0.05)] flex justify-between items-center">
+                                <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    Histórico de Recebimentos
+                                </h3>
+                            </div>
+                            <div class="p-4 space-y-3 overflow-y-auto max-h-[600px] bg-black/10 flex-1" id="faturas-pagas-list">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2.4 AVULSOS TAB -->
+            <div id="tab-avulsos" class="tab-content hidden fade-in-up">
+                <div id="form-avulsos-container" class="slide-down-form glass-card p-6 border-t-4 border-t-emerald-500">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-white">Registrar Serviço Avulso</h3>
+                        <button onclick="toggleForm('form-avulsos-container')" class="text-gray-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <form id="form-avulsos" class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                        <div class="md:col-span-2">
+                            <label class="input-label">Cliente Requerente</label>
+                            <select id="avulso-cliente" required class="input-field"><option value="">Carregando...</option><option value="Outros">Outro / Externo</option></select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="input-label">Tipo de Trabalho</label>
+                            <select id="avulso-tipo" required class="input-field">
+                                <option value="Edição de vídeo">Edição de vídeo</option>
+                                <option value="Criação de site">Criação de site</option>
+                                <option value="Design">Design Gráfico</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div><label class="input-label">Valor Cobrado (R$)</label><input type="number" step="0.01" id="avulso-valor" required class="input-field"></div>
+                        <div><label class="input-label">Data de Recebimento</label><input type="date" id="avulso-data" required class="input-field"></div>
+                        <div class="md:col-span-2"><label class="input-label">Detalhes</label><input type="text" id="avulso-obs" class="input-field" placeholder="Ex: Vídeo de 30s para campanha..."></div>
+                        <div class="md:col-span-4 flex justify-end mt-2"><button type="submit" class="btn-primary w-full sm:w-auto">Salvar Entrada</button></div>
+                    </form>
+                </div>
+
+                <div class="glass-card p-0 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="modern-table">
+                            <thead><tr><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Data</th><th class="hidden sm:table-cell">Detalhes</th><th class="text-right">Ações</th></tr></thead>
+                            <tbody id="avulsos-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2.5 FABIO (CUSTOS) TAB -->
+            <div id="tab-fabio" class="tab-content hidden fade-in-up">
+                <div id="form-fabio-container" class="slide-down-form grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 border-t-4 border-t-sky-500">
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-base font-bold text-white">Adicionar Comissão (Fixo 30%)</h3>
+                            <button onclick="toggleForm('form-fabio-container')" class="text-gray-400 hover:text-white lg:hidden"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                        </div>
+                        <form id="form-comissao-empresa" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="input-label">Valor (R$)</label><input type="number" step="0.01" id="comissao-empresa-valor" required class="input-field"></div>
+                                <div><label class="input-label">Data Base</label><input type="date" id="comissao-empresa-data" required class="input-field"></div>
+                            </div>
+                            <div><label class="input-label">Ref. Cliente/Mês</label><input type="text" id="comissao-empresa-obs" class="input-field"></div>
+                            <button type="submit" class="btn-primary w-full justify-center">Lançar Comissão</button>
+                        </form>
+                    </div>
+                    <div class="glass-card p-6 border-t-4 border-t-blue-500 relative">
+                        <button onclick="toggleForm('form-fabio-container')" class="absolute top-6 right-6 text-gray-400 hover:text-white hidden lg:block"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                        <h3 class="text-base font-bold text-white mb-5">Adicionar Serviço Extra</h3>
+                        <form id="form-servicos-extras" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="input-label">Custo (R$)</label><input type="number" step="0.01" id="extra-valor" required class="input-field"></div>
+                                <div><label class="input-label">Data de Execução</label><input type="date" id="extra-data" required class="input-field"></div>
+                            </div>
+                            <div><label class="input-label">Descrição da Tarefa</label><input type="text" id="extra-obs" class="input-field"></div>
+                            <button type="submit" class="btn-primary w-full justify-center">Lançar Custo Extra</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="glass-card p-0 overflow-hidden">
+                    <div class="p-5 border-b border-[var(--border-color)] flex justify-between items-center bg-[rgba(0,0,0,0.2)]">
+                        <h3 class="text-sm font-bold text-gray-300 uppercase">Extrato Geral de Custos</h3>
+                        <p class="text-sm text-gray-400">Total Acumulado: <span id="fabio-total-pago" class="font-bold text-sky-400 text-lg ml-2">R$ 0,00</span></p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="modern-table">
+                            <thead><tr><th>Categoria</th><th>Valor Pago</th><th>Data</th><th class="hidden sm:table-cell">Observações</th><th class="text-right">Ações</th></tr></thead>
+                            <tbody id="fabio-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- JAVASCRIPT: LÓGICA DA APLICAÇÃO -->
+    <!-- SCRIPTS CORE -->
     <script type="module">
-        // =================================================================
-        // FIREBASE IMPORTS E CONFIGURAÇÃO
-        // =================================================================
-        // Importando funções de autenticação, incluindo Google Auth e Email/Senha
         import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, getDocs, query, where, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Configuração Firebase fornecida pelo usuário (novangestao)
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyCTj0St5odkB_t_7_gpbOAcAVDkoXWCFDk",
             authDomain: "novangestao.firebaseapp.com",
@@ -610,7 +808,6 @@
         const auth = getAuth(app);
         const PROJECT_ID = FIREBASE_CONFIG.projectId;
 
-        // Caminhos das coleções públicas
         const COLLECTIONS = {
             clients: `artifacts/${PROJECT_ID}/public/data/clients`,
             invoices: `artifacts/${PROJECT_ID}/public/data/invoices`,
@@ -618,1177 +815,742 @@
             avulsos: `artifacts/${PROJECT_ID}/public/data/avulsos`,
         };
 
-        // NOVO COMENTÁRIO IMPORTANTE: REGRAS DE SEGURANÇA DO FIRESTORE
-        /* ATENÇÃO: O erro "400 Bad Request" (WebChannelConnection RPC 'Write' errored) 
-            geralmente indica que as Regras de Segurança do Firestore estão BLOQUEANDO 
-            as operações de escrita (addDoc, setDoc, deleteDoc).
-            
-            Para que o aplicativo funcione com persistência, as Regras DESTE PROJETO 
-            (novangestao) devem permitir que QUALQUER usuário autenticado (anonymous ou Google) 
-            leia e escreva nos caminhos de dados públicos que o app está usando.
-            
-            Exemplo de regra NECESSÁRIA no console do Firebase (Firestore -> Rules):
-            
-            service cloud.firestore {
-              match /databases/{database}/documents {
-                // Permite leitura e escrita para QUALQUER usuário autenticado nas coleções públicas
-                match /artifacts/{appId}/public/data/{collection}/{document} {
-                  allow read, write: if request.auth != null;
-                }
-              }
-            }
-        */
+        let clients = [], invoices = [], fabioCommissions = [], avulsos = [];
+        let pieChart, lineChart;
 
-        // Estado Global da Aplicação (Atualizado somente pelo onSnapshot)
-        let clients = [];
-        let invoices = [];
-        let fabioCommissions = [];
-        let avulsos = [];
-        let isAuthReady = false;
-
-
-        // =================================================================
-        // CONFIGURAÇÃO DA GEMINI API
-        // =================================================================
-        const API_KEY = ""; // A chave será injetada automaticamente
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
-        const MODEL = 'gemini-2.5-flash-preview-09-2025';
-
-        /**
-         * Função genérica para chamar a API Gemini.
-         * @param {string} userQuery - O prompt do usuário.
-         * @param {string} systemInstruction - Instrução de persona/comportamento para a AI.
-         * @returns {Promise<string>} O texto gerado pela AI.
-         */
-        window.callGeminiAPI = async function(userQuery, systemInstruction) { // EXPOSED
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-            };
-
-            let response;
-            let result;
-            const maxRetries = 3;
-            let delay = 1000;
-
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.status === 429 && i < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2;
-                        continue; 
-                    }
-
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(`Erro na API: ${response.status} - ${error.error.message}`);
-                    }
-
-                    result = await response.json();
-                    break;
-
-                } catch (error) {
-                    console.error("Erro na chamada da API Gemini:", error);
-                    if (i === maxRetries - 1) {
-                        throw new Error("Falha ao se comunicar com a Inteligência Artificial após várias tentativas.");
-                    }
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2;
-                }
-            }
-
-            const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) {
-                throw new Error("A Inteligência Artificial não retornou um texto válido.");
-            }
-            return text;
-        }
-
-
-        // =================================================================
-        // 0. UTILITÁRIOS
-        // =================================================================
-
-        // Formatador de Moeda
-        const formatCurrency = (value) => {
-            return new Intl.NumberFormat('pt-BR', { 
-                style: 'currency', 
-                currency: 'BRL',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(value);
+        // --- UX / UTILS ---
+        const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
         };
 
-        // Formatador de Data para DD/MM/YYYY
-        const formatDate = (dateString) => {
-            if (!dateString) return '';
-            const [year, month, day] = dateString.split('-');
-            return `${day}/${month}/${year}`;
+        document.getElementById('header-date-text').textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
+
+        window.showNotification = function(msg, isError = false) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const icon = isError ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+            const colorClass = isError ? 'bg-red-500/90 border-red-500' : 'bg-emerald-500/90 border-emerald-500';
+            
+            toast.className = `toast-enter relative overflow-hidden flex items-center gap-3 p-4 rounded-xl shadow-2xl border text-white backdrop-blur-md ${colorClass}`;
+            toast.innerHTML = `
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg>
+                <p class="text-sm font-medium tracking-wide">${msg}</p>
+                <div class="toast-progress"></div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-exit');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
         };
 
-        // Máscara de Telefone (00) 00000-0000
-        window.maskPhone = function(input) { // EXPOSED
-            let value = input.value.replace(/\D/g, "");
-            let masked = "";
-            if (value.length > 0) masked += "(" + value.substring(0, 2);
-            if (value.length >= 3) masked += ") " + value.substring(2, 7);
-            if (value.length >= 8) masked += "-" + value.substring(7, 11);
-            input.value = masked.substring(0, 15);
-        }
-
-        // Notificação (Substitui alert/confirm não destrutivo)
-        window.showNotification = function(message, isError = false) { // EXPOSED
-            console.log("Notificação exibida:", message, isError); // LOG DE DIAGNÓSTICO
-            const container = document.getElementById('notification-container');
-            const notification = document.createElement('div');
-            notification.className = `card p-4 shadow-lg flex items-center space-x-3 transition-all duration-300 transform translate-x-full opacity-0 ${isError ? 'bg-red-800 border-red-400' : 'bg-green-800 border-green-400'} border-l-4`;
-            
-            notification.innerHTML = `
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isError ? 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z' : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'}"></path>
-                </svg>
-                <p class="text-sm font-medium text-white">${message}</p>
-            `;
-            container.appendChild(notification);
-
-            setTimeout(() => {
-                notification.classList.remove('translate-x-full', 'opacity-0');
-                notification.classList.add('translate-x-0', 'opacity-100');
-            }, 10);
-
-            setTimeout(() => {
-                notification.classList.remove('translate-x-0', 'opacity-100');
-                notification.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => notification.remove(), 300);
-            }, 5000);
-        }
-
-        // =================================================================
-        // FUNÇÕES DE EXCLUSÃO DE DOIS CLIQUES (Mantido)
-        // =================================================================
-
-        function executeDelete(id, type) {
-            switch (type) {
-                case 'client': window.deleteClient(id); break;
-                case 'invoice': window.deleteInvoice(id); break;
-                case 'commission': window.deleteCommission(id); break;
-                case 'avulso': window.deleteAvulso(id); break;
-            }
-        }
-
-        window.cancelDelete = function(id, type, buttonElement) { // EXPOSED
-            const parent = buttonElement.closest('div');
-            const row = parent.closest('tr');
-            
-            row.classList.remove('delete-confirming');
-            parent.dataset.confirming = 'false';
-
-            parent.innerHTML = `
-                <button onclick="window.toggleDelete('${id}', '${type}', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-            `;
-        }
-
-        window.toggleDelete = function(id, type, buttonElement) { // EXPOSED
-            const parent = buttonElement.parentElement;
-            const row = parent.closest('tr');
-            const isConfirming = parent.dataset.confirming === 'true';
-
-            if (isConfirming) {
-                executeDelete(id, type);
-                row.classList.remove('delete-confirming');
-            } else {
-                row.classList.add('delete-confirming');
-                parent.dataset.confirming = 'true';
-
-                parent.innerHTML = `
-                    <button onclick="window.toggleDelete('${id}', '${type}', this)" title="Confirmar Exclusão" class="btn-primary bg-red-600 hover:bg-red-700 text-sm py-1 px-2 transition-colors">
-                        Excluir?
-                    </button>
-                    <button onclick="window.cancelDelete('${id}', '${type}', this)" title="Cancelar" class="text-gray-400 hover:text-white text-sm py-1 px-2 transition-colors">
-                        Cancelar
-                    </button>
-                `;
-                
-                setTimeout(() => {
-                    if (parent.dataset.confirming === 'true') {
-                        window.cancelDelete(id, type, parent.querySelector('.text-gray-400'));
-                    }
-                }, 5000);
-            }
-        }
-        
-        // =================================================================
-        // 1. AUTENTICAÇÃO E INICIALIZAÇÃO FIREBASE
-        // =================================================================
-
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        
-        // Mobile Toggle Logic
-        const sidebar = document.getElementById('sidebar');
-        const menuToggle = document.getElementById('menu-toggle');
-
-        window.toggleMenu = function(forceClose = undefined) { // EXPOSED
-            const isOpen = sidebar.classList.contains('open');
-            if (forceClose !== undefined) {
-                 if (forceClose) sidebar.classList.remove('open');
-                 else sidebar.classList.add('open');
-            } else {
-                sidebar.classList.toggle('open');
-            }
-        }
-
-        menuToggle.addEventListener('click', () => window.toggleMenu());
-        
-        // Autenticação Real (Email/Senha ou Google)
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                isAuthReady = true;
-                localStorage.setItem('isAuthenticated', 'true');
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('dashboard-view').classList.remove('hidden');
-                setupFirestoreListeners();
-                window.updateDashboard();
-                loadDataForForms();
-            } else {
-                isAuthReady = false;
-                // Se o user deslogou ou não está logado no Firebase, mostramos a tela de login.
-                localStorage.removeItem('isAuthenticated');
-                document.getElementById('login-view').classList.remove('hidden');
-                document.getElementById('dashboard-view').classList.add('hidden');
-            }
-        });
-
-        // Login com Email e Senha (método principal)
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const rememberMe = document.getElementById('login-remember').checked;
-
-            loginError.classList.add('hidden'); // Esconde erros antigos
-
-            if (!email || !password) {
-                loginError.textContent = 'Por favor, insira email e senha.';
-                loginError.classList.remove('hidden');
-                return;
-            }
-
-            signInWithEmailAndPassword(auth, email, password)
-                .then(() => {
-                    window.showNotification('Login realizado com sucesso!', false);
-                    // Lógica de lembrar credenciais (se marcada)
-                    if (rememberMe) {
-                        localStorage.setItem('rememberEmail', email);
-                        localStorage.setItem('rememberPassword', password);
-                    } else {
-                        localStorage.removeItem('rememberEmail');
-                        localStorage.removeItem('rememberPassword');
-                    }
-                    // onAuthStateChanged cuidará da navegação
-                })
-                .catch((error) => {
-                    console.error("Erro no Login com Email/Senha:", error);
-                    let errorText = 'Erro no login. Verifique as credenciais.';
-                    if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                        errorText = 'Email ou senha inválidos. Por favor, tente novamente.';
-                    } else if (error.code === 'auth/operation-not-allowed') {
-                        errorText = 'O login por Email/Senha não está ativado no Firebase. Ative para usar este método.';
-                    }
-                    loginError.textContent = errorText;
-                    loginError.classList.remove('hidden');
-                    window.showNotification(errorText, true);
-                });
-        });
-
-        // NOVO: Login com Google
-        window.signInWithGoogle = async function() { // EXPOSED
-            const provider = new GoogleAuthProvider();
-            try {
-                await signInWithPopup(auth, provider);
-                // onAuthStateChanged will handle the navigation upon success
-                window.showNotification("Login com Google realizado com sucesso!");
-            } catch (error) {
-                console.error("Erro no Login com Google:", error);
-                let errorMessage;
-
-                if (error.code === 'auth/unauthorized-domain') {
-                    errorMessage = 'Erro de Domínio Não Autorizado. Por favor, adicione o domínio atual nas Configurações de Autenticação do seu projeto Firebase.';
-                } else if (error.message.includes('popup-closed')) {
-                    errorMessage = 'O popup de login foi fechado.';
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+                obj.innerHTML = formatCurrency(Math.floor(easeOut * (end - start) + start));
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
                 } else {
-                    errorMessage = 'Erro de autenticação com o Google.';
+                    obj.innerHTML = formatCurrency(end);
                 }
-
-                window.showNotification(errorMessage, true);
-            }
-        }
-
-        window.logout = function() { // EXPOSED
-            signOut(auth).then(() => {
-                localStorage.removeItem('isAuthenticated');
-                window.showNotification("Sessão encerrada.");
-            }).catch((error) => {
-                console.error("Erro ao fazer logout:", error);
-                window.showNotification("Erro ao encerrar a sessão.", true);
-            });
-        }
-        
-        // =================================================================
-        // FIREBASE LISTENERS (onSnapshot)
-        // =================================================================
-
-        function setupFirestoreListeners() {
-            // Clientes
-            onSnapshot(collection(db, COLLECTIONS.clients), (snapshot) => {
-                clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderClientesTable();
-                loadDataForForms();
-                window.updateDashboard();
-            });
-
-            // Faturas
-            onSnapshot(collection(db, COLLECTIONS.invoices), (snapshot) => {
-                invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                window.renderFaturasTable();
-                window.updateDashboard();
-            });
-
-            // Comissões (Fábio)
-            onSnapshot(collection(db, COLLECTIONS.fabioCommissions), (snapshot) => {
-                fabioCommissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderFabioTable();
-                window.updateDashboard();
-            });
-
-            // Serviços Avulsos
-            onSnapshot(collection(db, COLLECTIONS.avulsos), (snapshot) => {
-                avulsos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAvulsosTable();
-                window.updateDashboard();
-            });
-        }
-
-        // =================================================================
-        // 2. LÓGICA DO DASHBOARD (KPIs e Gráficos)
-        // =================================================================
-
-        let pieChart, lineChart, barChart;
-
-        function calculateDashboardMetrics(startDate, endDate) {
-            // Agora usamos as variáveis de estado globais (invoices, avulsos, fabioCommissions)
-            // que são atualizadas pelo onSnapshot.
-            
-            const start = startDate ? new Date(startDate) : new Date(0);
-            const end = endDate ? new Date(endDate) : new Date('2100-01-01');
-            if (endDate) end.setDate(end.getDate() + 1);
-
-            let totalRecebido = 0;
-            let totalAReceber = 0;
-            let totalAtrasado = 0;
-            let comissaoPagaFab = 0;
-            let lucroLiquido = 0;
-
-            const now = new Date();
-
-            // 1. Cálculo de Faturas
-            invoices.forEach(f => {
-                const dueDate = new Date(f.dueDate + 'T00:00:00'); 
-                const value = parseFloat(f.value);
-
-                if (dueDate >= start && dueDate <= end) {
-                    if (f.status === 'Pago') {
-                        totalRecebido += value;
-                    } else if (f.status === 'A Receber') {
-                        totalAReceber += value;
-                        if (dueDate < now) {
-                            totalAtrasado += value;
-                        }
-                    }
-                }
-            });
-
-            // 2. Cálculo de Serviços Avulsos
-            avulsos.forEach(a => {
-                const date = new Date(a.date + 'T00:00:00');
-                const value = parseFloat(a.value);
-                if (date >= start && date <= end) {
-                    totalRecebido += value;
-                }
-            });
-
-            // 3. Cálculo de Comissões Fábio
-            fabioCommissions.forEach(c => {
-                const date = new Date(c.date + 'T00:00:00');
-                const value = parseFloat(c.value);
-                if (date >= start && date <= end) {
-                    comissaoPagaFab += value;
-                }
-            });
-
-            lucroLiquido = totalRecebido - comissaoPagaFab;
-
-            return {
-                totalRecebido, totalAReceber, totalAtrasado, comissaoPagaFab, lucroLiquido,
             };
+            window.requestAnimationFrame(step);
         }
 
-        window.clearDateFilters = function() { // EXPOSED
-            document.getElementById('date-start').value = '';
-            document.getElementById('date-end').value = '';
-            window.updateDashboard();
-            window.showNotification('Filtro de datas removido (Todo Período).');
-        }
-
-        window.updateDashboard = function() { // EXPOSED
-            const startDate = document.getElementById('date-start').value;
-            const endDate = document.getElementById('date-end').value;
-
-            const metrics = calculateDashboardMetrics(startDate, endDate);
-
-            // Atualiza KPIs (Fontes alteradas para text-xl)
-            document.getElementById('kpi-recebido').textContent = formatCurrency(metrics.totalRecebido);
-            document.getElementById('kpi-a-receber').textContent = formatCurrency(metrics.totalAReceber);
-            document.getElementById('kpi-atrasado').textContent = formatCurrency(metrics.totalAtrasado);
-            document.getElementById('kpi-lucro').textContent = formatCurrency(metrics.lucroLiquido);
-            document.getElementById('kpi-comissao-fab').textContent = formatCurrency(metrics.comissaoPagaFab);
-            
-            document.getElementById('ai-insight-result').innerHTML = `Aguardando a geração de insights financeiros pela Inteligência Artificial...`;
-
-            renderPieChart(metrics.totalRecebido, metrics.totalAReceber, metrics.totalAtrasado);
-            renderLineChart();
-            renderBarChart();
-        }
-
-        // NOVO RECURSO AI: ANÁLISE FINANCEIRA
-        window.generateFinancialInsight = async function() { // EXPOSED
-            const insightDiv = document.getElementById('ai-insight-result');
-            const btn = document.getElementById('btn-ai-insight');
-            
-            btn.disabled = true;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<svg class="animate-spin w-5 h-5 mr-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75"></path></svg> <span>Analisando...</span>`;
-            insightDiv.textContent = 'Gerando análise...';
-
-            try {
-                const startDate = document.getElementById('date-start').value;
-                const endDate = document.getElementById('date-end').value;
-                const metrics = calculateDashboardMetrics(startDate, endDate);
-
-                const period = (startDate && endDate) ? `o período de ${formatDate(startDate)} a ${formatDate(endDate)}` : 'todo o período registrado';
-
-                const prompt = `Analise os seguintes indicadores financeiros da agência de marketing digital NOVAN para ${period}. Seja conciso e use linguagem profissional em português.
-
-                KPIs:
-                - Total Recebido: ${formatCurrency(metrics.totalRecebido)}
-                - Total a Receber: ${formatCurrency(metrics.totalAReceber)}
-                - Total em Atraso: ${formatCurrency(metrics.totalAtrasado)}
-                - Lucro Líquido (Recebido - Comissões): ${formatCurrency(metrics.lucroLiquido)}
-                - Comissões Pagas: ${formatCurrency(metrics.comissaoPagaFab)}
-
-                Com base nesses dados, forneça um resumo e destaque a principal área de foco (ex: aumentar recebimento, reduzir atraso, otimizar custos).`;
-
-                const systemInstruction = "Você é um analista financeiro sênior e consultor estratégico. Seu objetivo é analisar KPIs financeiros de forma clara e objetiva, fornecendo um resumo e uma recomendação de foco principal.";
-                
-                const resultText = await callGeminiAPI(prompt, systemInstruction);
-
-                insightDiv.innerHTML = resultText.replace(/\n/g, '<br>');
-                window.showNotification('Análise Financeira AI concluída.');
-
-            } catch (error) {
-                insightDiv.textContent = `Erro ao gerar análise: ${error.message}`;
-                window.showNotification('Erro na Análise Financeira AI.', true);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-        
-        // =================================================================
-        // GRÁFICOS
-        // =================================================================
-
-        function renderPieChart(recebido, aReceber, atrasado) {
-            const ctx = document.getElementById('chart-pie').getContext('2d');
-            
-            const pieData = [recebido, aReceber];
-            const pieLabels = ['Recebido', 'A Receber (Total)'];
-
-            if (pieChart) pieChart.destroy();
-
-            pieChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: pieLabels,
-                    datasets: [{
-                        data: pieData,
-                        backgroundColor: ['#10b981', '#f59e0b'], 
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { labels: { color: '#e5e7eb' } },
-                        title: { display: false }
-                    },
-                    maintainAspectRatio: true
-                }
+        function triggerNumberAnimations() {
+            document.querySelectorAll('.count-up').forEach(el => {
+                const finalValue = parseFloat(el.getAttribute('data-value')) || 0;
+                animateValue(el, 0, finalValue, 1500);
             });
         }
 
-        function renderLineChart() {
-            const ctx = document.getElementById('chart-line').getContext('2d');
-            
-            const monthlyData = {};
-            const startDate = document.getElementById('date-start').value;
-            const endDate = document.getElementById('date-end').value;
-
-            const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear() - 1, 0, 1);
-            const end = endDate ? new Date(endDate) : new Date();
-
-            const allInvoices = invoices;
-            const allAvulsos = avulsos;
-            const allCommissions = fabioCommissions;
-
-            function aggregateMonthly(items, valueKey, dateKey, type) {
-                items.forEach(item => {
-                    const itemDate = new Date(item[dateKey] + 'T00:00:00');
-                    if (itemDate >= start && itemDate <= end) {
-                        const monthKey = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0');
-                        if (!monthlyData[monthKey]) monthlyData[monthKey] = { revenue: 0, expense: 0 };
-
-                        const value = parseFloat(item[valueKey]);
-
-                        if (type === 'revenue') {
-                            if (item.status && item.status === 'Pago') {
-                                monthlyData[monthKey].revenue += value;
-                            } else if (!item.status) {
-                                monthlyData[monthKey].revenue += value;
-                            }
-                        } else if (type === 'expense') {
-                            monthlyData[monthKey].expense += value;
-                        }
-                    }
-                });
-            }
-
-            aggregateMonthly(allInvoices.filter(i => i.status === 'Pago'), 'value', 'dueDate', 'revenue');
-            aggregateMonthly(allAvulsos, 'value', 'date', 'revenue');
-            aggregateMonthly(allCommissions, 'value', 'date', 'expense');
-
-            const monthKeys = Object.keys(monthlyData).sort();
-            const labels = monthKeys.map(key => {
-                const [year, month] = key.split('-');
-                return new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-            });
-            const lucroData = monthKeys.map(key => monthlyData[key].revenue - monthlyData[key].expense);
-
-            if (lineChart) lineChart.destroy();
-
-            lineChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Lucro Líquido',
-                        data: lucroData,
-                        backgroundColor: 'rgba(0, 212, 255, 0.2)',
-                        borderColor: '#00d4ff',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: '#e5e7eb' } } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#2a2e41' },
-                            ticks: { color: '#e5e7eb', callback: function(value) { return formatCurrency(value); } }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#e5e7eb' }
-                        }
-                    },
-                    maintainAspectRatio: true
-                }
-            });
-        }
-
-        function renderBarChart() {
-            const ctx = document.getElementById('chart-bar').getContext('2d');
-            
-            const commissionData = { 'Comissão Empresa (30%)': 0, 'Serviços Extras': 0 };
-
-            const startDate = document.getElementById('date-start').value;
-            const endDate = document.getElementById('date-end').value;
-            const start = startDate ? new Date(startDate) : new Date(0);
-            const end = endDate ? new Date(endDate) : new Date('2100-01-01');
-            if (endDate) end.setDate(end.getDate() + 1);
-
-            fabioCommissions.forEach(c => {
-                const date = new Date(c.date + 'T00:00:00');
-                if (date >= start && date <= end) {
-                    const value = parseFloat(c.value);
-                    commissionData[c.type] += value;
-                }
-            });
-
-            const barLabels = Object.keys(commissionData);
-            const barValues = Object.values(commissionData);
-
-            if (barChart) barChart.destroy();
-
-            barChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: barLabels,
-                    datasets: [{
-                        label: 'Total Pago',
-                        data: barValues,
-                        backgroundColor: ['#7c3aed', '#a855f7'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: '#e5e7eb' } } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#2a2e41' },
-                            ticks: { color: '#e5e7eb', callback: function(value) { return formatCurrency(value); } }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#e5e7eb' }
-                        }
-                    },
-                    maintainAspectRatio: true
-                }
-            });
-        }
-
-
-        // =================================================================
-        // 3. LÓGICA DE CLIENTES (Firestore)
-        // =================================================================
-
-        const formClientes = document.getElementById('form-clientes');
-
-        // NOVO RECURSO AI: GERADOR DE ESCOPO DE SERVIÇO
-        window.generateScopeDescription = async function() { // EXPOSED
-            // ... lógica mantida ... (usando 'clients' global)
-            const btn = document.getElementById('btn-ai-scope');
-            const textarea = document.getElementById('cliente-escopo');
-            const valorInput = document.getElementById('cliente-valor');
-            const valor = valorInput.value;
-            
-            const servicosCheckboxes = document.querySelectorAll('input[name="servicos-contratados"]:checked');
-            const servicos = Array.from(servicosCheckboxes).map(cb => cb.value);
-
-            if (servicos.length === 0) {
-                window.showNotification('Selecione pelo menos um serviço antes de gerar o escopo.', true);
-                return;
-            }
-            if (!valor || parseFloat(valor) <= 0) {
-                window.showNotification('Insira um Valor do Contrato válido antes de gerar o escopo.', true);
-                return;
-            }
-
-            btn.disabled = true;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<svg class="animate-spin w-4 h-4 mr-1 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75"></path></svg> <span>Gerando...</span>`;
-            textarea.value = 'Gerando escopo com a IA...';
-
-            try {
-                const prompt = `Gere uma descrição de escopo de contrato (com 2 a 3 parágrafos curtos) para um cliente que contratou os seguintes serviços: ${servicos.join(', ')}. O valor mensal do contrato é ${formatCurrency(valor)}. O escopo deve ser motivacional e focado em resultados. Use o Português do Brasil.`;
-                const systemInstruction = "Você é um Copywriter Sênior da NOVAN, especialista em criar descrições de projetos de marketing digital concisas, impactantes e focadas no valor para o cliente.";
-
-                const resultText = await callGeminiAPI(prompt, systemInstruction);
-
-                textarea.value = resultText;
-                window.showNotification('Escopo gerado pela AI com sucesso!');
-
-            } catch (error) {
-                textarea.value = `Erro: Não foi possível gerar o escopo. ${error.message}`;
-                window.showNotification('Erro ao gerar Escopo AI.', true);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-
-        formClientes.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nome = document.getElementById('cliente-nome').value;
-            const telefone = document.getElementById('cliente-telefone').value;
-            const valor = document.getElementById('cliente-valor').value;
-            const fechamento = document.getElementById('cliente-fechamento').value;
-            const escopo = document.getElementById('cliente-escopo').value;
-            const servicosCheckboxes = document.querySelectorAll('input[name="servicos-contratados"]:checked');
-            const servicos = Array.from(servicosCheckboxes).map(cb => cb.value);
-
-            const newClient = {
-                name: nome,
-                phone: telefone,
-                contractValue: parseFloat(valor),
-                closeDate: fechamento,
-                services: servicos,
-                scope: escopo,
-                createdAt: new Date().toISOString(), // Adiciona timestamp
-            };
-
-            try {
-                await addDoc(collection(db, COLLECTIONS.clients), newClient);
-                formClientes.reset();
-                // onSnapshot irá atualizar a UI
-                window.showNotification('Cliente cadastrado com sucesso (Firestore)!');
-            } catch (error) {
-                console.error("Erro ao adicionar cliente:", error);
-                window.showNotification('Erro ao cadastrar cliente no Firestore.', true);
-            }
-        });
-
-        window.deleteClient = async function(id) { // EXPOSED
-            try {
-                // Deleta o documento do cliente
-                await deleteDoc(doc(db, COLLECTIONS.clients, id));
-                
-                // Opção 1 (Simples): Não deleta faturas/avulsos
-                // Opção 2 (Complexa): Deletar documentos relacionados (Melhor para integridade)
-                const relatedInvoices = await getDocs(query(collection(db, COLLECTIONS.invoices), where("clientId", "==", id)));
-                relatedInvoices.forEach(async (d) => await deleteDoc(doc(db, COLLECTIONS.invoices, d.id)));
-
-                const relatedAvulsos = await getDocs(query(collection(db, COLLECTIONS.avulsos), where("clientId", "==", id)));
-                relatedAvulsos.forEach(async (d) => await deleteDoc(doc(db, COLLECTIONS.avulsos, d.id)));
-                
-                // onSnapshot fará o refresh da UI
-                window.showNotification('Cliente e dados relacionados excluídos (Firestore).', true);
-            } catch (error) {
-                console.error("Erro ao deletar cliente:", error);
-                window.showNotification('Erro ao excluir cliente no Firestore.', true);
-            }
-        }
-
-        function renderClientesTable() {
-            const tbody = document.getElementById('clientes-table-body');
-            tbody.innerHTML = '';
-
-            clients.forEach(c => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${c.name}</td>
-                    <td>${c.phone}</td>
-                    <td>${formatCurrency(c.contractValue)}</td>
-                    <td>${formatDate(c.closeDate)}</td>
-                    <td class="hidden sm:table-cell">${c.services.join(', ')}</td>
-                    <td>
-                        <div id="action-client-${c.id}" class="flex space-x-2" data-confirming="false">
-                            <button onclick="window.toggleDelete('${c.id}', 'client', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </td>
-                `;
-            });
-        }
-
-        // =================================================================
-        // 4. LÓGICA DE FATURAS (Firestore)
-        // =================================================================
-
-        const formFaturas = document.getElementById('form-faturas');
-
-        function getNextMonthDate(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            const day = date.getDate();
-            date.setMonth(date.getMonth() + 1);
-            if (date.getDate() !== day) {
-                date.setDate(0); 
-            }
-            return date.toISOString().split('T')[0];
-        }
-
-        async function generateInvoice(clientId, value, dueDate, status, isAutoGenerated = false) {
-            const client = clients.find(c => c.id === clientId);
-            if (!client) return;
-
-            const newInvoice = {
-                clientId: clientId,
-                clientName: client.name,
-                value: parseFloat(value),
-                dueDate: dueDate,
-                status: status,
-                generationDate: new Date().toISOString().split('T')[0]
-            };
-
-            try {
-                await addDoc(collection(db, COLLECTIONS.invoices), newInvoice);
-                if (!isAutoGenerated) {
-                    window.showNotification('Fatura gerada com sucesso (Firestore)!');
-                }
-            } catch (error) {
-                console.error("Erro ao gerar fatura:", error);
-                window.showNotification('Erro ao gerar fatura no Firestore.', true);
-            }
-        }
-
-        formFaturas.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const clientId = document.getElementById('fatura-cliente').value;
-            const value = document.getElementById('fatura-valor').value;
-            const dueDate = document.getElementById('fatura-vencimento').value;
-            const status = document.getElementById('fatura-status').value;
-
-            await generateInvoice(clientId, value, dueDate, status);
-
-            formFaturas.reset();
-            
-            if (status === 'Pago') {
-                const nextDueDateString = getNextMonthDate(dueDate);
-                await generateInvoice(clientId, value, nextDueDateString, 'A Receber', true);
-                window.showNotification(`Próxima fatura (${formatDate(nextDueDateString)}) gerada automaticamente.`);
-            }
-        });
-        
-        window.updateInvoiceStatus = async function(id, newStatus) { // EXPOSED
-            const invoiceRef = doc(db, COLLECTIONS.invoices, id);
-            // Busca a fatura no estado atualizado global (invoices)
-            const invoiceToUpdate = invoices.find(f => f.id === id);
-            
-            if (!invoiceToUpdate) {
-                console.error("Fatura não encontrada para atualização:", id);
-                window.showNotification('Erro interno: Fatura não encontrada.', true);
-                return;
-            }
-            
-            const oldStatus = invoiceToUpdate.status;
-            console.log(`Tentando atualizar fatura ${id}. Status antigo: ${oldStatus}, Novo status: ${newStatus}`); // LOG DE DIAGNÓSTICO
-
-            try {
-                // 1. Atualiza o status (dispara o onSnapshot)
-                await setDoc(invoiceRef, { status: newStatus }, { merge: true });
-                console.log(`Status da fatura ${id} atualizado no Firestore.`); // LOG DE DIAGNÓSTICO
-
-                // 2. Se mudou para Pago, gera a próxima
-                if (newStatus === 'Pago' && oldStatus !== 'Pago') {
-                    const nextDueDateString = getNextMonthDate(invoiceToUpdate.dueDate);
-                    console.log(`Gerando próxima fatura para: ${nextDueDateString}`); // LOG DE DIAGNÓSTICO
-                    
-                    // A nova fatura deve ser gerada AGUARDANDO sua persistência no Firestore.
-                    await generateInvoice(invoiceToUpdate.clientId, invoiceToUpdate.value, nextDueDateString, 'A Receber', true);
-                    window.showNotification('Fatura paga e próxima fatura gerada automaticamente!', false);
-                } else {
-                    window.showNotification(`Status da fatura atualizado para ${newStatus}.`);
-                }
-                
-            } catch (error) {
-                console.error("Erro ao atualizar status ou gerar próxima fatura:", error); // LOG MELHORADO
-                window.showNotification('Erro ao atualizar status no Firestore.', true);
-            }
-        }
-
-        window.deleteInvoice = async function(id) { // EXPOSED
-            try {
-                await deleteDoc(doc(db, COLLECTIONS.invoices, id));
-                window.showNotification('Fatura excluída (Firestore).', true);
-            } catch (error) {
-                console.error("Erro ao deletar fatura:", error);
-                window.showNotification('Erro ao excluir fatura no Firestore.', true);
-            }
-        }
-
-
-        window.renderFaturasTable = function() { // EXPOSED
-            const filterClient = document.getElementById('fatura-filter-cliente').value;
-            const filterStatus = document.getElementById('fatura-filter-status').value;
-            let filteredInvoices = [...invoices];
-            const tbody = document.getElementById('faturas-table-body');
-            tbody.innerHTML = '';
-
-            if (filterClient) {
-                filteredInvoices = filteredInvoices.filter(f => f.clientId === filterClient);
-            }
-            if (filterStatus) {
-                filteredInvoices = filteredInvoices.filter(f => f.status === filterStatus);
-            }
-
-            filteredInvoices.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-            filteredInvoices.forEach(f => {
-                const statusColor = f.status === 'Pago' ? 'text-green-500' : 
-                                  (new Date(f.dueDate) < new Date() && f.status === 'A Receber' ? 'text-red-500' : 'text-yellow-500');
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${f.clientName}</td>
-                    <td>${formatCurrency(f.value)}</td>
-                    <td>${formatDate(f.dueDate)}</td>
-                    <td class="${statusColor}">${f.status}</td>
-                    <td>
-                        <div id="action-invoice-${f.id}" class="flex space-x-2" data-confirming="false">
-                            ${f.status === 'A Receber' ? `<button onclick="window.updateInvoiceStatus('${f.id}', 'Pago')" title="Marcar como Pago" class="text-green-500 hover:text-green-700 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </button>` : `<div class="w-5 h-5"></div>`}
-                            <button onclick="window.toggleDelete('${f.id}', 'invoice', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </td>
-                `;
-            });
-        }
-
-        // =================================================================
-        // 5. LÓGICA DE COMISSÕES (FÁBIO) (Firestore)
-        // =================================================================
-
-        const formComissaoEmpresa = document.getElementById('form-comissao-empresa');
-        const formServicosExtras = document.getElementById('form-servicos-extras');
-
-        async function registerCommission(type, value, date, obs) {
-            const newCommission = {
-                type: type,
-                value: parseFloat(value),
-                date: date,
-                observation: obs,
-                createdAt: new Date().toISOString(),
-            };
-
-            try {
-                await addDoc(collection(db, COLLECTIONS.fabioCommissions), newCommission);
-                window.showNotification('Comissão registrada com sucesso (Firestore)!');
-            } catch (error) {
-                console.error("Erro ao registrar comissão:", error);
-                window.showNotification('Erro ao registrar comissão no Firestore.', true);
-            }
-        }
-
-        formComissaoEmpresa.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const valor = document.getElementById('comissao-empresa-valor').value;
-            const data = document.getElementById('comissao-empresa-data').value;
-            const obs = document.getElementById('comissao-empresa-obs').value;
-            await registerCommission('Comissão Empresa (30%)', valor, data, obs);
-            formComissaoEmpresa.reset();
-        });
-
-        formServicosExtras.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const valor = document.getElementById('extra-valor').value;
-            const data = document.getElementById('extra-data').value;
-            const obs = document.getElementById('extra-obs').value;
-            await registerCommission('Serviços Extras', valor, data, obs);
-            formServicosExtras.reset();
-        });
-
-        window.deleteCommission = async function(id) { // EXPOSED
-            try {
-                await deleteDoc(doc(db, COLLECTIONS.fabioCommissions, id));
-                window.showNotification('Registro de comissão excluído (Firestore).', true);
-            } catch (error) {
-                console.error("Erro ao deletar comissão:", error);
-                window.showNotification('Erro ao excluir comissão no Firestore.', true);
-            }
-        }
-
-        function renderFabioTable() {
-            const tbody = document.getElementById('fabio-table-body');
-            tbody.innerHTML = '';
-
-            let totalPago = 0;
-
-            fabioCommissions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            fabioCommissions.forEach(c => {
-                totalPago += c.value;
-                const typeColor = c.type.includes('Empresa') ? 'text-purple-400' : 'text-blue-400';
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td class="${typeColor}">${c.type}</td>
-                    <td>${formatCurrency(c.value)}</td>
-                    <td>${formatDate(c.date)}</td>
-                    <td class="hidden sm:table-cell">${c.observation || '-'}</td>
-                    <td>
-                        <div id="action-commission-${c.id}" class="flex space-x-2" data-confirming="false">
-                            <button onclick="window.toggleDelete('${c.id}', 'commission', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </td>
-                `;
-            });
-
-            document.getElementById('fabio-total-pago').textContent = formatCurrency(totalPago);
-        }
-
-        // =================================================================
-        // 6. LÓGICA DE SERVIÇOS AVULSOS (Firestore)
-        // =================================================================
-
-        const formAvulsos = document.getElementById('form-avulsos');
-
-        formAvulsos.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const clientId = document.getElementById('avulso-cliente').value;
-            const type = document.getElementById('avulso-tipo').value;
-            const value = document.getElementById('avulso-valor').value;
-            const date = document.getElementById('avulso-data').value;
-            const obs = document.getElementById('avulso-obs').value;
-
-            // Se o cliente for "Outros", o clientName será 'Outros'. Caso contrário, busca o nome no estado global.
-            const clientName = clientId === 'Outros' ? 'Outros' : (clients.find(c => c.id === clientId)?.name || 'Cliente Não Encontrado');
-
-            const newAvulso = {
-                clientId: clientId,
-                clientName: clientName,
-                type: type,
-                value: parseFloat(value),
-                date: date,
-                observation: obs,
-                createdAt: new Date().toISOString(),
-            };
-
-            try {
-                await addDoc(collection(db, COLLECTIONS.avulsos), newAvulso);
-                formAvulsos.reset();
-                window.showNotification('Serviço avulso registrado com sucesso (Firestore)!');
-            } catch (error) {
-                console.error("Erro ao registrar avulso:", error);
-                window.showNotification('Erro ao registrar serviço avulso no Firestore.', true);
-            }
-        });
-
-        window.deleteAvulso = async function(id) { // EXPOSED
-            try {
-                await deleteDoc(doc(db, COLLECTIONS.avulsos, id));
-                window.showNotification('Serviço avulso excluído (Firestore).', true);
-            } catch (error) {
-                console.error("Erro ao deletar avulso:", error);
-                window.showNotification('Erro ao excluir serviço avulso no Firestore.', true);
-            }
-        }
-
-        window.renderAvulsosTable = function() { // EXPOSED
-            const filterClient = document.getElementById('avulso-filter-cliente').value;
-            let filteredAvulsos = [...avulsos];
-            const tbody = document.getElementById('avulsos-table-body');
-            tbody.innerHTML = '';
-
-            if (filterClient) {
-                if (filterClient === 'Outros') {
-                    filteredAvulsos = filteredAvulsos.filter(a => a.clientName === 'Outros');
-                } else {
-                    filteredAvulsos = filteredAvulsos.filter(a => a.clientId === filterClient);
-                }
-            }
-
-            filteredAvulsos.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            filteredAvulsos.forEach(a => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${a.clientName}</td>
-                    <td>${a.type}</td>
-                    <td>${formatCurrency(a.value)}</td>
-                    <td>${formatDate(a.date)}</td>
-                    <td class="hidden sm:table-cell">${a.observation || '-'}</td>
-                    <td>
-                        <div id="action-avulso-${a.id}" class="flex space-x-2" data-confirming="false">
-                            <button onclick="window.toggleDelete('${a.id}', 'avulso', this)" title="Excluir" class="text-red-500 hover:text-red-700 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </td>
-                `;
-            });
-        }
-
-
-        // =================================================================
-        // 7. LÓGICA DE UI E NAVEGAÇÃO
-        // =================================================================
-
-        window.navigateTo = function(tabId, event) { // EXPOSED
+        window.toggleForm = function(formId) {
+            const el = document.getElementById(formId);
+            el.classList.toggle('active');
+        };
+
+        // --- NAVIGATION & HEADER DYNAMICS ---
+        const pageTitles = {
+            'dashboard': 'Dashboard Analítico',
+            'clientes': 'Base de Clientes',
+            'faturas': 'Controle de Faturas',
+            'avulsos': 'Serviços Avulsos',
+            'fabio': 'Gestão de Comissões'
+        };
+
+        window.navigateTo = function(tabId, event) {
             if (event) event.preventDefault();
             
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('fade-in-up'); 
+            });
+            
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('hidden');
+            void activeTab.offsetWidth;
+            activeTab.classList.add('fade-in-up');
 
             document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[href="#${tabId}"]`)?.classList.add('active');
             
-            const activeLink = document.querySelector(`[href="#${tabId}"]`);
-            if (activeLink) activeLink.classList.add('active');
+            // Animar Títulos na Troca
+            const titleEl = document.getElementById('page-title');
+            const dateEl = document.getElementById('header-date');
+            
+            titleEl.classList.remove('animate-title');
+            dateEl.classList.remove('animate-title');
+            void titleEl.offsetWidth; // Force Reflow
+            
+            titleEl.textContent = pageTitles[tabId];
+            titleEl.classList.add('animate-title');
+            dateEl.classList.add('animate-title');
 
+            const headerActions = document.getElementById('dynamic-header-actions');
             if (tabId === 'dashboard') {
+                headerActions.innerHTML = `<button onclick="navigateTo('faturas')" class="btn-primary"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> Nova Fatura</button>`;
                 window.updateDashboard();
+            } else {
+                headerActions.innerHTML = `<button onclick="toggleForm('form-${tabId}-container')" class="btn-primary"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> Adicionar Novo(a)</button>`;
             }
-        }
-
-        function loadDataForForms() {
-            const clientSelects = document.querySelectorAll('#fatura-cliente, #avulso-cliente, #fatura-filter-cliente, #avulso-filter-cliente');
-
-            clientSelects.forEach(select => {
-                const initialOptions = Array.from(select.options).filter(opt => opt.value === '' || opt.value === 'Outros');
-                select.innerHTML = '';
-                initialOptions.forEach(opt => select.appendChild(opt));
-            });
             
-            clients.forEach(c => {
-                const option = document.createElement('option');
-                option.value = c.id;
-                option.textContent = c.name;
-
-                clientSelects.forEach(select => {
-                    const clone = option.cloneNode(true);
-                    
-                    const outrosOption = Array.from(select.options).find(opt => opt.value === 'Outros');
-                    if (outrosOption) {
-                        select.insertBefore(clone, outrosOption);
-                    } else {
-                        select.appendChild(clone);
-                    }
-                });
-            });
-        }
-
-        // =================================================================
-        // 8. EXECUÇÃO AO CARREGAR A PÁGINA
-        // =================================================================
-
-        window.onload = () => {
-            // Tenta carregar credenciais (Apenas para preenchimento de campos na tela de login)
-            const rememberedEmail = localStorage.getItem('rememberEmail');
-            const loginEmailInput = document.getElementById('login-email');
-            if (rememberedEmail) {
-                 loginEmailInput.value = rememberedEmail;
-                 document.getElementById('login-password').value = localStorage.getItem('rememberPassword') || '';
-                 document.getElementById('login-remember').checked = true;
-            }
-
-            // A navegação inicial é resolvida pelo onAuthStateChanged
-            // Define o filtro de data inicial
-            const dateEnd = new Date().toISOString().split('T')[0];
-            const dateStart = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0];
-            document.getElementById('date-start').value = dateStart;
-            document.getElementById('date-end').value = dateEnd;
+            if(window.innerWidth < 1024) document.getElementById('sidebar').classList.add('-translate-x-full');
         };
 
+        window.setQuickFilter = function(period) {
+            const end = new Date();
+            let start = new Date();
+            document.querySelectorAll('.btn-outline').forEach(b => { if(b.id.includes('filter')) b.classList.remove('bg-white/10', 'border-white/20', 'text-sky-400'); });
+            
+            if (period === 30) {
+                start.setDate(end.getDate() - 30);
+                document.getElementById('filter-btn-30').classList.add('bg-white/10', 'border-white/20', 'text-sky-400');
+            } else if (period === 'month') {
+                start = new Date(end.getFullYear(), end.getMonth(), 1);
+                document.getElementById('filter-btn-month').classList.add('bg-white/10', 'border-white/20', 'text-sky-400');
+            } else if (period === 'year') {
+                start = new Date(end.getFullYear(), 0, 1);
+                document.getElementById('filter-btn-year').classList.add('bg-white/10', 'border-white/20', 'text-sky-400');
+            }
+            document.getElementById('date-start').value = start.toISOString().split('T')[0];
+            document.getElementById('date-end').value = end.toISOString().split('T')[0];
+            window.updateDashboard();
+        };
+
+        window.customDateSelected = function() {
+            document.querySelectorAll('.btn-outline').forEach(b => { if(b.id.includes('filter')) b.classList.remove('bg-white/10', 'border-white/20', 'text-sky-400'); });
+            window.updateDashboard();
+        };
+
+        // --- RENDER TABLES E DADOS ---
+        window.loadDataForForms = function() {
+            const opts = '<option value="">Selecione um cliente...</option>' + clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            
+            const faturaClienteEl = document.getElementById('fatura-cliente');
+            if (faturaClienteEl) faturaClienteEl.innerHTML = opts;
+            
+            const avulsoClienteEl = document.getElementById('avulso-cliente');
+            if (avulsoClienteEl) avulsoClienteEl.innerHTML = opts + '<option value="Outros">Outro / Externo</option>';
+        };
+
+        const avatarColors = [
+            'bg-red-500/20 text-red-400 border border-red-500/30', 
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+            'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', 
+            'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+            'bg-purple-500/20 text-purple-400 border border-purple-500/30', 
+            'bg-pink-500/20 text-pink-400 border border-pink-500/30',
+            'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30', 
+            'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+        ];
+
+        const getAvatarColor = (name) => {
+            if(!name) return avatarColors[0];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return avatarColors[Math.abs(hash) % avatarColors.length];
+        };
+
+        window.renderClientesTable = function() {
+            const grid = document.getElementById('clientes-grid');
+            if (!grid) return;
+            
+            grid.innerHTML = clients.map((c, i) => {
+                let badgeClass = 'badge-success';
+                let dotClass = 'bg-emerald-400';
+                
+                if (c.status === 'Pausado') { badgeClass = 'badge-warning'; dotClass = 'bg-yellow-400'; }
+                if (c.status === 'Inativo') { badgeClass = 'badge-danger'; dotClass = 'bg-red-400'; }
+
+                return `
+                <div class="glass-card p-6 fade-in-up relative group flex flex-col h-full hover:-translate-y-1 transition-transform duration-300" style="animation-delay: ${i*50}ms">
+                    <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 bg-[var(--bg-surface)] backdrop-blur-md p-1.5 rounded-xl border border-[var(--border-color)] shadow-xl z-10">
+                        <button onclick="window.editClient('${c.id}')" class="text-gray-400 hover:text-sky-400 p-1.5 transition-colors" title="Editar"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                        <button onclick="window.deleteRecord('${COLLECTIONS.clients}', '${c.id}')" class="text-gray-400 hover:text-red-400 p-1.5 transition-colors" title="Excluir"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </div>
+
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="w-14 h-14 rounded-2xl ${getAvatarColor(c.name)} flex items-center justify-center font-bold text-xl shadow-inner flex-shrink-0">${c.name.charAt(0).toUpperCase()}</div>
+                        <div class="pr-12">
+                            <h4 class="font-bold text-white text-lg leading-tight mb-1">${c.name}</h4>
+                            <span class="badge ${badgeClass} text-[10px] mb-2 inline-flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full ${dotClass} animate-pulse shadow-[0_0_5px_currentColor]"></span>
+                                ${c.status || 'Ativo'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 mb-4">
+                        <p class="text-xs text-gray-400 flex items-center gap-2"><svg class="w-3.5 h-3.5 text-sky-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg> ${c.phone || 'S/ Contato'}</p>
+                        ${c.email ? `<p class="text-xs text-gray-400 flex items-center gap-2"><svg class="w-3.5 h-3.5 text-sky-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg> <span class="truncate">${c.email}</span></p>` : ''}
+                        ${c.documento ? `<p class="text-xs text-gray-400 flex items-center gap-2"><svg class="w-3.5 h-3.5 text-sky-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path></svg> ${c.documento}</p>` : ''}
+                    </div>
+
+                    <div class="mt-auto pt-4 border-t border-[var(--border-color)]">
+                        <div class="flex justify-between items-end mb-3">
+                            <span class="text-xs text-gray-500 font-medium">Fee Mensal</span>
+                            <span class="font-extrabold text-emerald-400 text-xl tracking-tight">${formatCurrency(c.value)}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            ${(c.services || []).map(s => `<span class="px-2.5 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-300 text-[10px] rounded-lg font-semibold tracking-wide">${s}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        };
+
+        window.renderFaturasTable = function() {
+            const listPendentes = document.getElementById('faturas-pendentes-list');
+            const listPagas = document.getElementById('faturas-pagas-list');
+            
+            if (!listPendentes || !listPagas) return;
+            
+            const pendentes = invoices.filter(f => f.status === 'A Receber').sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+            const pagas = invoices.filter(f => f.status === 'Pago').sort((a,b) => new Date(b.dueDate) - new Date(a.dueDate));
+
+            const renderItem = (f, isPaid, index) => {
+                const isLate = !isPaid && new Date(f.dueDate + 'T00:00:00') < new Date();
+                const dueText = isLate ? `<span class="text-red-400 font-bold">Atrasado (${formatDate(f.dueDate)})</span>` : `Vence em ${formatDate(f.dueDate)}`;
+                
+                // Aplicar cor fixa do cliente ao avatar
+                const avatarTheme = getAvatarColor(f.clientName);
+
+                return `
+                <div class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] transition-all fade-in-up shadow-sm group" style="animation-delay: ${index * 40}ms">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${avatarTheme}">
+                            ${f.clientName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-bold text-white text-sm lg:text-base leading-tight">${f.clientName}</p>
+                            <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                ${isPaid ? `Pago ref. ${formatDate(f.dueDate)}` : dueText}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-right flex flex-col items-end gap-2">
+                        <span class="font-extrabold tracking-tight ${isPaid ? 'text-emerald-400' : 'text-white'}">${formatCurrency(f.value)}</span>
+                        <div class="flex gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                            ${!isPaid ? `<button onclick="window.updateInvoiceStatus('${f.id}', 'Pago')" class="text-[10px] uppercase tracking-wider font-bold bg-emerald-500 text-white hover:bg-emerald-600 px-2.5 py-1.5 rounded-lg transition-transform hover:scale-105 shadow-lg shadow-emerald-500/30">Baixar</button>` : ''}
+                            <button onclick="window.editInvoice('${f.id}')" class="bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 p-1.5 rounded-lg transition-colors" title="Editar Fatura"><svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                            <button onclick="window.deleteRecord('${COLLECTIONS.invoices}', '${f.id}')" class="bg-red-500/10 text-red-400 hover:bg-red-500/20 p-1.5 rounded-lg transition-colors" title="Deletar Fatura"><svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            };
+
+            listPendentes.innerHTML = pendentes.length 
+                ? pendentes.map((f, i) => renderItem(f, false, i)).join('') 
+                : '<div class="h-full flex flex-col items-center justify-center p-8 text-center"><div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-3"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><p class="text-gray-400 font-medium">Tudo em dia!</p><p class="text-xs text-gray-500">Nenhuma fatura pendente.</p></div>';
+            
+            listPagas.innerHTML = pagas.length 
+                ? pagas.map((f, i) => renderItem(f, true, i)).join('') 
+                : '<p class="text-center text-gray-500 py-8 text-sm">Nenhum pagamento registrado recentemente.</p>';
+        };
+
+        window.renderFabioTable = function() {
+            const tbody = document.getElementById('fabio-table-body');
+            if (!tbody) return;
+
+            let total = 0;
+            const sorted = [...fabioCommissions].sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            tbody.innerHTML = sorted.map((c, i) => {
+                total += parseFloat(c.value);
+                const isExtra = c.type !== 'Comissão Fixa (Empresa)';
+                return `
+                <tr class="fade-in-up" style="animation-delay: ${i*50}ms">
+                    <td><span class="badge ${isExtra ? 'badge-warning' : 'badge-success'}">${c.type}</span></td>
+                    <td class="font-bold text-white">${formatCurrency(c.value)}</td>
+                    <td class="text-gray-400">${formatDate(c.date)}</td>
+                    <td class="hidden sm:table-cell text-sm text-gray-500">${c.obs || '-'}</td>
+                    <td class="text-right">
+                        <button onclick="window.deleteRecord('${COLLECTIONS.fabioCommissions}', '${c.id}')" class="text-gray-500 hover:text-red-400 p-2 transition-colors"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </td>
+                </tr>
+            `}).join('');
+            
+            const totalEl = document.getElementById('fabio-total-pago');
+            if (totalEl) totalEl.textContent = formatCurrency(total);
+        };
+
+        window.renderAvulsosTable = function() {
+            const tbody = document.getElementById('avulsos-table-body');
+            if (!tbody) return;
+
+            const sorted = [...avulsos].sort((a,b) => new Date(b.date) - new Date(a.date));
+            tbody.innerHTML = sorted.map((a, i) => `
+                <tr class="fade-in-up" style="animation-delay: ${i*50}ms">
+                    <td class="font-semibold text-white flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-md ${getAvatarColor(a.clientName)} flex items-center justify-center font-bold text-[10px] flex-shrink-0">${(a.clientName || 'O').charAt(0).toUpperCase()}</div>
+                        ${a.clientName}
+                    </td>
+                    <td><span class="badge bg-sky-500/10 text-sky-400 border-sky-500/20">${a.type}</span></td>
+                    <td class="font-bold text-emerald-400">${formatCurrency(a.value)}</td>
+                    <td class="text-gray-400">${formatDate(a.date)}</td>
+                    <td class="hidden sm:table-cell text-sm text-gray-500 truncate max-w-[150px]">${a.obs || '-'}</td>
+                    <td class="text-right">
+                        <button onclick="window.deleteRecord('${COLLECTIONS.avulsos}', '${a.id}')" class="text-gray-500 hover:text-red-400 p-2 transition-colors"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </td>
+                </tr>
+            `).join('');
+        };
+
+        // --- DASHBOARD CALCULATIONS & CHARTS ---
+        window.updateDashboard = function() {
+            const startEl = document.getElementById('date-start');
+            const endEl = document.getElementById('date-end');
+            const startStr = startEl ? startEl.value : '';
+            const endStr = endEl ? endEl.value : '';
+            const start = startStr ? new Date(startStr) : new Date(0);
+            const end = endStr ? new Date(endStr) : new Date('2100-01-01');
+            if (endStr) end.setDate(end.getDate() + 1);
+
+            let totalRecebido = 0, totalAReceber = 0, totalAtrasado = 0, comissaoPagaFab = 0;
+            const now = new Date();
+
+            invoices.forEach(f => {
+                const d = new Date(f.dueDate + 'T00:00:00'); 
+                const v = parseFloat(f.value);
+                if (d >= start && d <= end) {
+                    if (f.status === 'Pago') totalRecebido += v;
+                    else {
+                        totalAReceber += v;
+                        if (d < now) totalAtrasado += v;
+                    }
+                }
+            });
+
+            avulsos.forEach(a => {
+                const d = new Date(a.date + 'T00:00:00');
+                if (d >= start && d <= end) totalRecebido += parseFloat(a.value);
+            });
+
+            fabioCommissions.forEach(c => {
+                const d = new Date(c.date + 'T00:00:00');
+                if (d >= start && d <= end) comissaoPagaFab += parseFloat(c.value);
+            });
+
+            const kpiRecebido = document.getElementById('kpi-recebido');
+            if (kpiRecebido) kpiRecebido.setAttribute('data-value', totalRecebido);
+            
+            const kpiAReceber = document.getElementById('kpi-a-receber');
+            if (kpiAReceber) kpiAReceber.setAttribute('data-value', totalAReceber);
+            
+            const kpiAtrasado = document.getElementById('kpi-atrasado');
+            if (kpiAtrasado) kpiAtrasado.setAttribute('data-value', totalAtrasado);
+            
+            const kpiLucro = document.getElementById('kpi-lucro');
+            if (kpiLucro) kpiLucro.setAttribute('data-value', totalRecebido - comissaoPagaFab);
+            
+            // Novos Cálculos (CRM)
+            const clientesAtivos = clients.filter(c => c.status !== 'Inativo' && c.status !== 'Pausado');
+            const totalMRR = clientesAtivos.reduce((acc, c) => acc + (parseFloat(c.value) || 0), 0);
+            const ticketMedio = clientesAtivos.length > 0 ? totalMRR / clientesAtivos.length : 0;
+
+            const kpiMRR = document.getElementById('kpi-mrr');
+            if(kpiMRR) kpiMRR.setAttribute('data-value', totalMRR);
+
+            const kpiQtdClientes = document.getElementById('kpi-clientes-ativos');
+            if(kpiQtdClientes) kpiQtdClientes.setAttribute('data-value', clientesAtivos.length);
+
+            const kpiTicket = document.getElementById('kpi-ticket-medio');
+            if(kpiTicket) kpiTicket.setAttribute('data-value', ticketMedio);
+
+            triggerNumberAnimations();
+            renderCharts(start, end, totalRecebido, totalAReceber);
+            renderPendingInvoices();
+        };
+
+        function renderPendingInvoices() {
+            const tbody = document.getElementById('dash-pending-table');
+            if (!tbody) return;
+
+            const pending = invoices.filter(i => i.status === 'A Receber').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).slice(0, 4);
+            
+            if(pending.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-500 italic">Tudo em dia! Nenhuma fatura pendente.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = pending.map(f => {
+                const isLate = new Date(f.dueDate + 'T00:00:00') < new Date();
+                return `
+                <tr class="hover:bg-white/[0.02] transition-colors">
+                    <td class="py-3 px-4 flex items-center gap-3">
+                        <div class="w-2 h-2 rounded-full ${isLate ? 'bg-red-500' : 'bg-yellow-500'}"></div>
+                        <div>
+                            <p class="font-semibold text-white leading-tight">${f.clientName}</p>
+                            <p class="text-xs ${isLate ? 'text-red-400 font-bold' : 'text-gray-400'}">${isLate ? 'Atrasado' : 'Vence em'} ${formatDate(f.dueDate)}</p>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-right font-bold text-white">${formatCurrency(f.value)}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="window.updateInvoiceStatus('${f.id}', 'Pago')" class="btn-outline text-emerald-400 border-transparent hover:bg-emerald-500/20 px-2 py-1" title="Marcar como Pago"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function renderCharts(start, end, recebido, aReceber) {
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+
+            const pieCanvas = document.getElementById('chart-pie');
+            if (pieCanvas) {
+                const ctxPie = pieCanvas.getContext('2d');
+                if (pieChart) pieChart.destroy();
+                pieChart = new Chart(ctxPie, {
+                    type: 'doughnut',
+                    data: { labels: ['Já Recebido', 'Pendente'], datasets: [{ data: [recebido, aReceber], backgroundColor: ['#0ea5e9', '#f59e0b'], borderWidth: 0, hoverOffset: 5 }] },
+                    options: { cutout: '78%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } }, maintainAspectRatio: false }
+                });
+            }
+
+            const lineCanvas = document.getElementById('chart-line');
+            if (lineCanvas) {
+                const ctxLine = lineCanvas.getContext('2d');
+                const monthlyData = {};
+                
+                [...invoices, ...avulsos].forEach(item => {
+                    const d = new Date((item.dueDate || item.date) + 'T00:00:00');
+                    if (d >= start && d <= end && (item.status === 'Pago' || !item.status)) {
+                        const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+                        if(!monthlyData[mk]) monthlyData[mk] = { rev:0, exp:0 };
+                        monthlyData[mk].rev += parseFloat(item.value);
+                    }
+                });
+
+                fabioCommissions.forEach(c => {
+                    const d = new Date(c.date + 'T00:00:00');
+                    if (d >= start && d <= end) {
+                        const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+                        if(!monthlyData[mk]) monthlyData[mk] = { rev:0, exp:0 };
+                        monthlyData[mk].exp += parseFloat(c.value);
+                    }
+                });
+
+                const keys = Object.keys(monthlyData).sort();
+                const labels = keys.map(k => new Date(k.split('-')[0], k.split('-')[1]-1, 1).toLocaleDateString('pt-BR', { month: 'short' }));
+                const dataRev = keys.map(k => monthlyData[k].rev);
+                const dataExp = keys.map(k => monthlyData[k].exp);
+
+                let gradient = ctxLine.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(14, 165, 233, 0.4)');
+                gradient.addColorStop(1, 'rgba(14, 165, 233, 0.0)');
+
+                if (lineChart) lineChart.destroy();
+                lineChart = new Chart(ctxLine, {
+                    type: 'line',
+                    data: {
+                        labels: labels.length ? labels : ['-'],
+                        datasets: [
+                            { label: 'Entradas', data: dataRev.length ? dataRev : [0], borderColor: '#0ea5e9', backgroundColor: gradient, borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#0ea5e9' },
+                            { label: 'Saídas', data: dataExp.length ? dataExp : [0], borderColor: '#0284c7', borderWidth: 2, tension: 0.4, borderDash: [5, 5], pointBackgroundColor: '#0284c7' }
+                        ]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: { 
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, border: {display: false} },
+                            x: { grid: { display: false }, border: {display: false} }
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- SISTEMA DE MODAL DE CONFIRMAÇÃO ---
+        let pendingDeleteInfo = null;
+
+        window.deleteRecord = function(colPath, id) {
+            pendingDeleteInfo = { colPath, id };
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; // Force Reflow
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-90');
+        };
+
+        window.closeConfirmModal = function() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-90');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                pendingDeleteInfo = null;
+            }, 300);
+        };
+
+        document.getElementById('btn-confirm-delete')?.addEventListener('click', async () => {
+            if(pendingDeleteInfo) {
+                const btn = document.getElementById('btn-confirm-delete');
+                const origTxt = btn.innerHTML;
+                btn.innerHTML = 'Excluindo...';
+                btn.disabled = true;
+
+                try {
+                    await deleteDoc(doc(db, pendingDeleteInfo.colPath, pendingDeleteInfo.id));
+                    window.showNotification('Registro excluído com sucesso.');
+                } catch(e) {
+                    window.showNotification('Erro ao excluir registro.', true);
+                }
+
+                btn.innerHTML = origTxt;
+                btn.disabled = false;
+                window.closeConfirmModal();
+            }
+        });
+
+        window.updateInvoiceStatus = async function(id, status) {
+            await setDoc(doc(db, COLLECTIONS.invoices, id), { status }, { merge: true });
+            window.showNotification(`Fatura liquidada! Receita atualizada.`);
+        };
+
+        // --- LÓGICA DE EDIÇÃO DE CLIENTES ---
+        let editingClientId = null;
+        
+        window.editClient = function(id) {
+            const c = clients.find(x => x.id === id);
+            if(!c) return;
+            
+            editingClientId = id;
+            document.getElementById('form-cliente-title').innerText = 'Editar Cliente';
+            document.getElementById('btn-submit-cliente').innerText = 'Atualizar Cliente';
+            document.getElementById('btn-cancel-edit-cliente').classList.remove('hidden');
+
+            document.getElementById('cliente-nome').value = c.name || '';
+            document.getElementById('cliente-email').value = c.email || '';
+            document.getElementById('cliente-documento').value = c.documento || '';
+            document.getElementById('cliente-telefone').value = c.phone || '';
+            document.getElementById('cliente-valor').value = c.value || '';
+            document.getElementById('cliente-fechamento').value = c.date || '';
+            document.getElementById('cliente-status').value = c.status || 'Ativo';
+            document.getElementById('cliente-escopo').value = c.scope || '';
+
+            document.querySelectorAll('input[name="servicos-contratados"]').forEach(cb => {
+                cb.checked = c.services && c.services.includes(cb.value);
+            });
+
+            const formContainer = document.getElementById('form-clientes-container');
+            if(!formContainer.classList.contains('active')) {
+                window.toggleForm('form-clientes-container');
+            }
+            formContainer.scrollIntoView({behavior: 'smooth'});
+        };
+
+        window.cancelEditClient = function() {
+            editingClientId = null;
+            document.getElementById('form-clientes').reset();
+            document.getElementById('form-cliente-title').innerText = 'Cadastrar Novo Cliente';
+            document.getElementById('btn-submit-cliente').innerText = 'Salvar Cliente';
+            document.getElementById('btn-cancel-edit-cliente').classList.add('hidden');
+            
+            const formContainer = document.getElementById('form-clientes-container');
+            if(formContainer.classList.contains('active')) {
+                window.toggleForm('form-clientes-container');
+            }
+        };
+
+        document.getElementById('form-clientes')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const origText = btn.innerHTML;
+            btn.innerHTML = 'Salvando...'; btn.disabled = true;
+
+            const data = {
+                name: document.getElementById('cliente-nome').value,
+                email: document.getElementById('cliente-email').value,
+                documento: document.getElementById('cliente-documento').value,
+                status: document.getElementById('cliente-status').value,
+                phone: document.getElementById('cliente-telefone').value,
+                value: parseFloat(document.getElementById('cliente-valor').value),
+                date: document.getElementById('cliente-fechamento').value,
+                services: Array.from(document.querySelectorAll('input[name="servicos-contratados"]:checked')).map(cb => cb.value),
+                scope: document.getElementById('cliente-escopo').value
+            };
+
+            if (editingClientId) {
+                await setDoc(doc(db, COLLECTIONS.clients, editingClientId), data, { merge: true });
+                window.showNotification('Cliente atualizado com sucesso!');
+                window.cancelEditClient(); 
+            } else {
+                await addDoc(collection(db, COLLECTIONS.clients), data);
+                e.target.reset();
+                window.toggleForm('form-clientes-container');
+                window.showNotification('Cliente salvo com sucesso!');
+            }
+            btn.innerHTML = origText; btn.disabled = false;
+        });
+
+        // --- LÓGICA DE EDIÇÃO DE FATURAS ---
+        let editingInvoiceId = null;
+
+        window.editInvoice = function(id) {
+            const f = invoices.find(x => x.id === id);
+            if(!f) return;
+
+            editingInvoiceId = id;
+            document.getElementById('form-fatura-title').innerText = 'Editar Fatura';
+            document.getElementById('btn-submit-fatura').innerText = 'Atualizar Fatura';
+            document.getElementById('btn-cancel-edit-fatura').classList.remove('hidden');
+
+            document.getElementById('fatura-cliente').value = f.clientName;
+            document.getElementById('fatura-valor').value = f.value;
+            document.getElementById('fatura-vencimento').value = f.dueDate;
+            document.getElementById('fatura-status').value = f.status;
+
+            const formContainer = document.getElementById('form-faturas-container');
+            if(!formContainer.classList.contains('active')) {
+                window.toggleForm('form-faturas-container');
+            }
+            formContainer.scrollIntoView({behavior: 'smooth'});
+        };
+
+        window.cancelEditInvoice = function() {
+            editingInvoiceId = null;
+            document.getElementById('form-faturas').reset();
+            document.getElementById('form-fatura-title').innerText = 'Emitir Nova Fatura';
+            document.getElementById('btn-submit-fatura').innerText = 'Registrar Fatura';
+            document.getElementById('btn-cancel-edit-fatura').classList.add('hidden');
+            
+            const formContainer = document.getElementById('form-faturas-container');
+            if(formContainer.classList.contains('active')) {
+                window.toggleForm('form-faturas-container');
+            }
+        };
+
+        document.getElementById('form-faturas')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const origText = btn.innerHTML;
+            btn.innerHTML = 'Salvando...'; btn.disabled = true;
+
+            const data = {
+                clientName: document.getElementById('fatura-cliente').value,
+                value: parseFloat(document.getElementById('fatura-valor').value),
+                dueDate: document.getElementById('fatura-vencimento').value,
+                status: document.getElementById('fatura-status').value
+            };
+
+            if (editingInvoiceId) {
+                await setDoc(doc(db, COLLECTIONS.invoices, editingInvoiceId), data, { merge: true });
+                window.showNotification('Fatura atualizada com sucesso!');
+                window.cancelEditInvoice();
+            } else {
+                await addDoc(collection(db, COLLECTIONS.invoices), data);
+                e.target.reset();
+                window.toggleForm('form-faturas-container');
+                window.showNotification('Fatura salva com sucesso!');
+            }
+            btn.innerHTML = origText; btn.disabled = false;
+        });
+
+        // Genéricos para outros formulários (Comissões e Avulsos)
+        const setupForm = (formId, colPath, dataFn) => {
+            document.getElementById(formId)?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const origText = btn.innerHTML;
+                btn.innerHTML = 'Salvando...'; btn.disabled = true;
+                
+                await addDoc(collection(db, colPath), dataFn());
+                
+                e.target.reset();
+                window.toggleForm(`${formId}-container`);
+                window.showNotification('Registro salvo com sucesso!');
+                btn.innerHTML = origText; btn.disabled = false;
+            });
+        };
+
+        setupForm('form-comissao-empresa', COLLECTIONS.fabioCommissions, () => ({
+            type: 'Comissão Fixa (Empresa)',
+            value: parseFloat(document.getElementById('comissao-empresa-valor').value),
+            date: document.getElementById('comissao-empresa-data').value,
+            obs: document.getElementById('comissao-empresa-obs').value
+        }));
+
+        setupForm('form-servicos-extras', COLLECTIONS.fabioCommissions, () => ({
+            type: 'Serviço Extra',
+            value: parseFloat(document.getElementById('extra-valor').value),
+            date: document.getElementById('extra-data').value,
+            obs: document.getElementById('extra-obs').value
+        }));
+
+        setupForm('form-avulsos', COLLECTIONS.avulsos, () => ({
+            clientName: document.getElementById('avulso-cliente').value,
+            type: document.getElementById('avulso-tipo').value,
+            value: parseFloat(document.getElementById('avulso-valor').value),
+            date: document.getElementById('avulso-data').value,
+            obs: document.getElementById('avulso-obs').value
+        }));
+
+        // --- AUTH & INIT ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.getElementById('dashboard-view').classList.add('flex');
+                
+                onSnapshot(collection(db, COLLECTIONS.clients), (snap) => { clients = snap.docs.map(d => ({id: d.id, ...d.data()})); window.renderClientesTable(); window.loadDataForForms(); window.updateDashboard(); });
+                onSnapshot(collection(db, COLLECTIONS.invoices), (snap) => { invoices = snap.docs.map(d => ({id: d.id, ...d.data()})); window.renderFaturasTable(); window.updateDashboard(); });
+                onSnapshot(collection(db, COLLECTIONS.fabioCommissions), (snap) => { fabioCommissions = snap.docs.map(d => ({id: d.id, ...d.data()})); window.renderFabioTable(); window.updateDashboard(); });
+                onSnapshot(collection(db, COLLECTIONS.avulsos), (snap) => { avulsos = snap.docs.map(d => ({id: d.id, ...d.data()})); window.renderAvulsosTable(); window.updateDashboard(); });
+                
+                window.navigateTo('dashboard');
+                window.setQuickFilter(30);
+            } else {
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('dashboard-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('flex');
+            }
+        });
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value)
+                .catch(error => { document.getElementById('login-error').classList.remove('hidden'); });
+        });
+
+        window.signInWithGoogle = async () => { await signInWithPopup(auth, new GoogleAuthProvider()); };
+        window.logout = () => { signOut(auth); };
+        
     </script>
 </body>
 </html>
