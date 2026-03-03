@@ -246,9 +246,10 @@
         }
 
         .fade-in-up {
-            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(30px);
+            will-change: transform, opacity;
         }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 
@@ -256,13 +257,18 @@
             0% { opacity: 0; transform: translateX(-20px); filter: blur(4px); }
             100% { opacity: 1; transform: translateX(0); filter: blur(0); }
         }
-        .animate-title { animation: titleReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-title { animation: titleReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; will-change: transform, opacity, filter; }
 
         @keyframes floatGlow {
             0%, 100% { transform: translateY(0); box-shadow: 0 0 10px rgba(14, 165, 233, 0.3); }
             50% { transform: translateY(-4px); box-shadow: 0 0 25px rgba(79, 70, 229, 0.6); }
         }
-        .animate-logo { animation: floatGlow 3s ease-in-out infinite; }
+        .animate-logo { animation: floatGlow 3s ease-in-out infinite; will-change: transform, box-shadow; }
+
+        .count-up {
+            font-variant-numeric: tabular-nums;
+            will-change: contents;
+        }
 
         .delay-75 { animation-delay: 75ms; }
         .delay-100 { animation-delay: 100ms; }
@@ -474,22 +480,27 @@
             <div id="tab-dashboard" class="tab-content fade-in-up delay-100">
                 
                 <!-- Quick Filters -->
-                <div class="glass-card p-2 flex flex-col lg:flex-row justify-between items-center gap-4 mb-8">
-                    <div class="flex flex-wrap gap-1 p-1">
-                        <button onclick="setQuickFilter(30)" id="filter-btn-30" class="btn-outline border-transparent text-xs py-1.5 px-3 active">30 Dias</button>
-                        <button onclick="setQuickFilter('month')" id="filter-btn-month" class="btn-outline border-transparent text-xs py-1.5 px-3">Mês Atual</button>
-                        <button onclick="setQuickFilter('year')" id="filter-btn-year" class="btn-outline border-transparent text-xs py-1.5 px-3">Este Ano</button>
+                <div class="glass-card p-2 flex flex-col xl:flex-row justify-between items-center gap-4 mb-8">
+                    <div class="flex flex-wrap gap-1.5 p-1 items-center">
+                        <span class="text-[10px] font-bold text-gray-500 uppercase mr-1 tracking-wider hidden sm:block">Período:</span>
+                        <button onclick="setQuickFilter('all')" id="filter-btn-all" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5">Máximo</button>
+                        <button onclick="setQuickFilter('prev3')" id="filter-btn-prev3" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5">Últ. 3 Meses</button>
+                        <button onclick="setQuickFilter('prev1')" id="filter-btn-prev1" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5">Mês Anterior</button>
+                        <button onclick="setQuickFilter('month')" id="filter-btn-month" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5 active">Mês Atual</button>
+                        <button onclick="setQuickFilter('next1')" id="filter-btn-next1" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5">Próx. Mês</button>
+                        <button onclick="setQuickFilter('next3')" id="filter-btn-next3" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5">Próx. 3 Meses</button>
+                        <button onclick="setQuickFilter('year')" id="filter-btn-year" class="btn-outline border-transparent text-[11px] py-1.5 px-2.5">Este Ano</button>
                     </div>
                     <div class="flex items-center gap-2 pr-2">
-                        <input type="date" id="date-start" class="input-field py-1 text-xs w-32 bg-transparent border-none" onchange="customDateSelected()">
-                        <span class="text-gray-600 text-xs">ate</span>
-                        <input type="date" id="date-end" class="input-field py-1 text-xs w-32 bg-transparent border-none" onchange="customDateSelected()">
+                        <input type="date" id="date-start" class="input-field py-1 px-2 text-xs w-28 bg-transparent border-none" onchange="customDateSelected()">
+                        <span class="text-gray-600 text-xs">até</span>
+                        <input type="date" id="date-end" class="input-field py-1 px-2 text-xs w-28 bg-transparent border-none" onchange="customDateSelected()">
                     </div>
                 </div>
 
                 <!-- KPI Numbers -->
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-                    <div class="glass-card p-6 relative overflow-hidden group">
+                    <div class="glass-card p-6 relative overflow-hidden group fade-in-up delay-75">
                         <div class="absolute -right-4 -top-4 w-24 h-24 bg-green-500/10 rounded-full blur-xl group-hover:bg-green-500/20 transition-all"></div>
                         <div class="flex items-center justify-between mb-4">
                             <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Receita Líquida</p>
@@ -498,7 +509,7 @@
                         <h3 class="text-3xl font-bold text-white tracking-tight count-up" data-value="0" id="kpi-recebido">R$ 0,00</h3>
                     </div>
 
-                    <div class="glass-card p-6 relative overflow-hidden group">
+                    <div class="glass-card p-6 relative overflow-hidden group fade-in-up delay-150">
                         <div class="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/10 rounded-full blur-xl group-hover:bg-yellow-500/20 transition-all"></div>
                         <div class="flex items-center justify-between mb-4">
                             <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider">A Receber</p>
@@ -507,7 +518,7 @@
                         <h3 class="text-3xl font-bold text-white tracking-tight count-up" data-value="0" id="kpi-a-receber">R$ 0,00</h3>
                     </div>
 
-                    <div class="glass-card p-6 relative overflow-hidden group border-red-500/20">
+                    <div class="glass-card p-6 relative overflow-hidden group border-red-500/20 fade-in-up delay-200">
                         <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-xl group-hover:bg-red-500/20 transition-all"></div>
                         <div class="flex items-center justify-between mb-4">
                             <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Inadimplência</p>
@@ -516,7 +527,7 @@
                         <h3 class="text-3xl font-bold text-red-400 tracking-tight count-up" data-value="0" id="kpi-atrasado">R$ 0,00</h3>
                     </div>
 
-                    <div class="glass-card p-6 relative overflow-hidden group border-indigo-500/30">
+                    <div class="glass-card p-6 relative overflow-hidden group border-indigo-500/30 fade-in-up delay-250">
                         <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-blue-600/10"></div>
                         <div class="flex items-center justify-between mb-4 relative z-10">
                             <p class="text-sm font-semibold text-indigo-200 uppercase tracking-wider">Lucro Real (S/ Custos)</p>
@@ -528,16 +539,16 @@
 
                 <!-- Secundary KPIs: CRM Metrics -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-                    <div class="glass-card p-5 flex items-center gap-4">
+                    <div class="glass-card p-5 flex items-center gap-4 fade-in-up delay-300">
                         <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         </div>
                         <div>
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Clientes Ativos</p>
-                            <h3 class="text-2xl font-bold text-white count-up" data-value="0" id="kpi-clientes-ativos">0</h3>
+                            <h3 class="text-2xl font-bold text-white count-up" data-value="0" data-is-currency="false" id="kpi-clientes-ativos">0</h3>
                         </div>
                     </div>
-                    <div class="glass-card p-5 flex items-center gap-4">
+                    <div class="glass-card p-5 flex items-center gap-4 fade-in-up delay-400">
                         <div class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>
@@ -546,7 +557,7 @@
                             <h3 class="text-2xl font-bold text-white count-up" data-value="0" id="kpi-mrr">R$ 0,00</h3>
                         </div>
                     </div>
-                    <div class="glass-card p-5 flex items-center gap-4">
+                    <div class="glass-card p-5 flex items-center gap-4 fade-in-up delay-500">
                         <div class="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                         </div>
@@ -560,7 +571,7 @@
                 <!-- Main Charts & Tables Grid -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
-                    <div class="glass-card p-6 lg:col-span-2 flex flex-col">
+                    <div class="glass-card p-6 lg:col-span-2 flex flex-col fade-in-up delay-400">
                         <h3 class="text-lg font-bold text-white mb-1">Evolução de Escala</h3>
                         <p class="text-sm text-gray-400 mb-6">Receitas brutas comparadas aos custos operacionais.</p>
                         <div class="relative flex-1 min-h-[300px] w-full">
@@ -568,7 +579,7 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-6">
+                    <div class="flex flex-col gap-6 fade-in-up delay-500">
                         <div class="glass-card p-6">
                             <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider">Saúde das Faturas</h3>
                             <div class="relative h-[200px] w-full flex justify-center">
@@ -944,15 +955,19 @@
 
         function animateValue(obj, start, end, duration) {
             let startTimestamp = null;
+            const isCurrency = obj.getAttribute('data-is-currency') !== 'false';
+            const formatStr = (val) => isCurrency ? formatCurrency(val) : val.toString();
+
             const step = (timestamp) => {
                 if (!startTimestamp) startTimestamp = timestamp;
                 const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                // Curva de aceleração muito mais fluida (60fps feel)
                 const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-                obj.innerHTML = formatCurrency(Math.floor(easeOut * (end - start) + start));
+                obj.innerHTML = formatStr(Math.floor(easeOut * (end - start) + start));
                 if (progress < 1) {
                     window.requestAnimationFrame(step);
                 } else {
-                    obj.innerHTML = formatCurrency(end);
+                    obj.innerHTML = formatStr(end);
                 }
             };
             window.requestAnimationFrame(step);
@@ -961,7 +976,8 @@
         function triggerNumberAnimations() {
             document.querySelectorAll('.count-up').forEach(el => {
                 const finalValue = parseFloat(el.getAttribute('data-value')) || 0;
-                animateValue(el, 0, finalValue, 1500);
+                // Aumentando a duração da animação para 2 segundos para dar mais requinte
+                animateValue(el, 0, finalValue, 2000);
             });
         }
 
@@ -1019,22 +1035,51 @@
         };
 
         window.setQuickFilter = function(period) {
-            const end = new Date();
+            const now = new Date();
             let start = new Date();
-            document.querySelectorAll('.btn-outline').forEach(b => { if(b.id.includes('filter')) b.classList.remove('bg-white/10', 'border-white/20', 'text-indigo-400'); });
+            let end = new Date();
             
-            if (period === 30) {
-                start.setDate(end.getDate() - 30);
-                document.getElementById('filter-btn-30').classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+            document.querySelectorAll('.btn-outline').forEach(b => { if(b.id && b.id.includes('filter')) b.classList.remove('bg-white/10', 'border-white/20', 'text-indigo-400'); });
+            
+            if (period === 'all') {
+                start = new Date(2000, 0, 1);
+                end = new Date(2100, 11, 31);
+                document.getElementById('filter-btn-all')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+            } else if (period === 'prev3') {
+                start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0); 
+                document.getElementById('filter-btn-prev3')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+            } else if (period === 'prev1') {
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0); 
+                document.getElementById('filter-btn-prev1')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
             } else if (period === 'month') {
-                start = new Date(end.getFullYear(), end.getMonth(), 1);
-                document.getElementById('filter-btn-month').classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 0); 
+                document.getElementById('filter-btn-month')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+            } else if (period === 'next1') {
+                start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 2, 0); 
+                document.getElementById('filter-btn-next1')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+            } else if (period === 'next3') {
+                start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 4, 0); 
+                document.getElementById('filter-btn-next3')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
             } else if (period === 'year') {
-                start = new Date(end.getFullYear(), 0, 1);
-                document.getElementById('filter-btn-year').classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
+                start = new Date(now.getFullYear(), 0, 1);
+                end = new Date(now.getFullYear(), 11, 31);
+                document.getElementById('filter-btn-year')?.classList.add('bg-white/10', 'border-white/20', 'text-indigo-400');
             }
-            document.getElementById('date-start').value = start.toISOString().split('T')[0];
-            document.getElementById('date-end').value = end.toISOString().split('T')[0];
+
+            const formatDateSafe = (dateObj) => {
+                const y = dateObj.getFullYear();
+                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const d = String(dateObj.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
+            document.getElementById('date-start').value = formatDateSafe(start);
+            document.getElementById('date-end').value = formatDateSafe(end);
             window.updateDashboard();
         };
 
@@ -1398,7 +1443,12 @@
                 pieChart = new Chart(ctxPie, {
                     type: 'doughnut',
                     data: { labels: ['Já Recebido', 'Pendente'], datasets: [{ data: [recebido, aReceber], backgroundColor: ['#4f46e5', '#f59e0b'], borderWidth: 0, hoverOffset: 5 }] },
-                    options: { cutout: '78%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } }, maintainAspectRatio: false }
+                    options: { 
+                        cutout: '78%', 
+                        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } }, 
+                        maintainAspectRatio: false,
+                        animation: { animateScale: true, animateRotate: true, duration: 1500, easing: 'easeOutQuart' }
+                    }
                 });
             }
 
@@ -1447,6 +1497,10 @@
                     options: {
                         maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutQuart'
+                        },
                         scales: { 
                             y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, border: {display: false} },
                             x: { grid: { display: false }, border: {display: false} }
@@ -1853,7 +1907,7 @@
                 onSnapshot(collection(db, COLLECTIONS.avulsos), (snap) => { avulsos = snap.docs.map(d => ({id: d.id, ...d.data()})); window.renderAvulsosTable(); window.updateDashboard(); });
                 
                 window.navigateTo('dashboard');
-                window.setQuickFilter(30);
+                window.setQuickFilter('month');
             } else {
                 document.getElementById('login-view').classList.remove('hidden');
                 document.getElementById('dashboard-view').classList.add('hidden');
